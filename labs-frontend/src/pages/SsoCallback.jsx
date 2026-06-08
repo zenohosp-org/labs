@@ -7,6 +7,7 @@ const ERROR_MESSAGES = {
     sso_failed: "SSO login failed. Please try again.",
     user_not_found: "Your account is not registered in HMS. Contact your admin.",
     account_inactive: "Your account is inactive. Contact your admin.",
+    no_labs_access: "Lab access is not enabled for your account.",
     no_hms_access: "Lab access is not enabled for your account.",
     role_missing: "Your account has no role assigned. Contact your admin.",
     internal_server_error: "An internal error occurred. Please try again.",
