@@ -18,4 +18,18 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         WHERE ii.labOrderId = :labOrderId
         """)
     boolean existsItemByLabOrderId(@Param("labOrderId") Long labOrderId);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(ii) > 0 THEN TRUE ELSE FALSE END
+        FROM InvoiceItem ii
+        WHERE ii.radiologyOrderId = :radiologyOrderId
+        """)
+    boolean existsItemByRadiologyOrderId(@Param("radiologyOrderId") Long radiologyOrderId);
+
+    /**
+     * Used by checkup auto-bill to skip if a booking has already been billed
+     * (the InvoiceItem table doesn't carry a booking_id FK, so the booking's
+     * own {@code invoice_id} field is authoritative).
+     */
+    boolean existsByIdAndAdmission_Id(UUID id, UUID admissionId);
 }
