@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "@/api/labsClient";
 import {
     FlaskConical,
     Microscope,
@@ -119,7 +120,10 @@ export default function Login() {
                     <button
                         type="button"
                         onClick={() => {
-                            window.location.href = "/oauth2/authorization/directory";
+                            // Must go to the labs-backend host (Spring Security owns
+                            // /oauth2/authorization/*). A relative path would dead-end
+                            // at the Vercel SPA rewrite in production.
+                            window.location.href = `${API_BASE_URL}/oauth2/authorization/directory`;
                         }}
                         className="labs-login__sso-btn"
                     >
