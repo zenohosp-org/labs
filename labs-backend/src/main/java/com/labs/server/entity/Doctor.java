@@ -1,6 +1,5 @@
 package com.labs.server.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,9 +7,12 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Read-only projection of the HMS-owned {@code doctors} table. Labs only needs
- * (id, hospital_id, user_id, name fields) for booking validation + responses.
- * No CRUD here — HMS is the source of truth for doctor records.
+ * Read-only projection of the HMS-owned {@code doctors} table. Labs only
+ * needs (id, user_id, hospital_id) for booking FK validation. No CRUD here —
+ * HMS owns the doctor lifecycle.
+ *
+ * HMS's PK is a plain UUID {@code id} (separate from {@code user_id}), so the
+ * booking's {@code doctor_id} column references {@code doctors.id}.
  */
 @Entity
 @Table(name = "doctors")
@@ -23,16 +25,6 @@ public class Doctor {
 
     @Id
     private UUID id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hospital_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Hospital hospital;
 
     @Column(name = "user_id")
     private UUID userId;
