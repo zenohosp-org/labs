@@ -1,0 +1,307 @@
+/* ===================================================================
+   ZenoLabs — Login page (Login.jsx)
+
+   Visual 1:1 port of the HMS login under the .labs-login__* prefix so the
+   classes never collide with other apps in a shared bundle. Keyframes are
+   also re-namespaced (labs-login-pulse-hero / labs-login-orb-float) for
+   the same reason. Auth controls are untouched — only the look ports.
+   =================================================================== */
+
+.labs-login {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--hms-white);
+}
+
+@media (min-width: 1024px) {
+    .labs-login { flex-direction: row; }
+}
+
+.labs-login__form-pane {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+}
+
+@media (min-width: 1024px) {
+    .labs-login__form-pane {
+        width: 45%;
+        padding: 48px;
+    }
+}
+
+.labs-login__form-inner {
+    width: 100%;
+    max-width: 384px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.labs-login__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.labs-login__brand-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--hms-gray-900);
+    color: var(--hms-white);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--hms-shadow-lg);
+}
+
+.labs-login__brand-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--hms-gray-900);
+    line-height: 1;
+}
+
+.labs-login__brand-sub {
+    margin: 4px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hms-gray-600);
+}
+
+.labs-login__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.labs-login__heading h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--hms-gray-900);
+}
+
+.labs-login__heading p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--hms-gray-500);
+}
+
+.labs-login__alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+    border: 1px solid;
+}
+
+.labs-login__alert.is-info {
+    background: var(--hms-gray-50);
+    border-color: var(--hms-gray-200);
+    color: var(--hms-gray-600);
+}
+
+.labs-login__alert.is-danger {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #be123c;
+}
+
+.labs-login__sso-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--hms-gray-900);
+    color: var(--hms-white);
+    font-weight: 700;
+    font-size: 15px;
+    border: 0;
+    border-radius: 8px;
+    box-shadow: var(--hms-shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 200ms ease, transform 100ms ease;
+}
+
+.labs-login__sso-btn:hover {
+    background: var(--hms-gray-800);
+}
+
+.labs-login__sso-btn:active {
+    transform: scale(0.98);
+}
+
+.labs-login__terms {
+    margin: 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hms-gray-600);
+}
+
+.labs-login__terms-link {
+    color: var(--hms-gray-900);
+    cursor: pointer;
+}
+
+.labs-login__terms-link:hover {
+    text-decoration: underline;
+}
+
+
+/* Right pane — auto-rotating feature carousel. Hidden on small screens;
+   55% on desktop. White surface with a centered "stage" (hero pill + 3
+   floating orbs) plus a caption block that rotates every 4.5s. All visuals
+   are inline lucide icons + CSS, no images and no network round-trips,
+   so the panel paints instantly. */
+.labs-login__visual {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .labs-login__visual {
+        display: flex;
+        width: 55%;
+        background: var(--hms-white);
+        border-left: 1px solid var(--hms-gray-200);
+        position: relative;
+        overflow: hidden;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px;
+    }
+}
+
+.labs-login__carousel {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 380px;
+    flex-shrink: 0;
+}
+
+.labs-login__slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 500ms ease, transform 500ms ease;
+    pointer-events: none;
+    will-change: opacity, transform;
+}
+
+.labs-login__slide.is-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.labs-login__slide-stage {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.labs-login__slide-hero {
+    width: 112px;
+    height: 112px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 14px 36px -10px rgba(15, 23, 42, 0.18);
+    animation: labs-login-pulse-hero 3.2s ease-in-out infinite;
+}
+
+.labs-login__slide.is-blue   .labs-login__slide-hero { background: #dbeafe; color: #2563eb; }
+.labs-login__slide.is-violet .labs-login__slide-hero { background: #ede9fe; color: #7c3aed; }
+.labs-login__slide.is-amber  .labs-login__slide-hero { background: #fef3c7; color: #d97706; }
+.labs-login__slide.is-green  .labs-login__slide-hero { background: #d1fae5; color: #059669; }
+
+@keyframes labs-login-pulse-hero {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.04); }
+}
+
+.labs-login__slide-orb {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: var(--hms-white);
+    border: 1px solid var(--hms-gray-200);
+    color: var(--hms-gray-700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.12);
+    animation: labs-login-orb-float 4s ease-in-out infinite;
+}
+
+.labs-login__slide-orb.is-orb-1 { top: 6%;    right: 4%;  animation-delay: 0s;   }
+.labs-login__slide-orb.is-orb-2 { bottom: 14%; right: 0%;  animation-delay: 0.7s; }
+.labs-login__slide-orb.is-orb-3 { bottom: 6%;  left: 10%;  animation-delay: 1.4s; }
+
+@keyframes labs-login-orb-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+.labs-login__slide-caption {
+    text-align: center;
+    max-width: 380px;
+}
+
+.labs-login__slide-caption h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--hms-gray-900);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+}
+
+.labs-login__slide-caption p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--hms-gray-600);
+    line-height: 1.55;
+}
+
+.labs-login__dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 36px;
+}
+
+.labs-login__dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: var(--hms-gray-300);
+    cursor: pointer;
+    transition: width 220ms ease, background-color 220ms ease;
+}
+
+.labs-login__dot.is-active {
+    width: 26px;
+    background: var(--hms-gray-900);
+}

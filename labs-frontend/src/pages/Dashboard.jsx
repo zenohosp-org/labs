@@ -39,8 +39,9 @@ export default function Dashboard() {
             </div>
 
             {err && (
-                <div className="hms-login__alert is-danger" role="alert">
-                    <AlertTriangle className="w-4 h-4" /> {err}
+                <div className="hms-alert is-red" role="alert">
+                    <AlertTriangle className="hms-alert__icon w-4 h-4" />
+                    <span>{err}</span>
                 </div>
             )}
 

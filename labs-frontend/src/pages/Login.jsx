@@ -11,6 +11,8 @@ import {
     HeartPulse,
     Stethoscope,
     ReceiptText,
+    Beaker,
+    Droplet,
 } from "lucide-react";
 
 const ERROR_MESSAGES = {
@@ -18,39 +20,43 @@ const ERROR_MESSAGES = {
     sso_failed: "Wrong email or password. Please try again.",
     user_not_found: "Your account is not registered in HMS. Contact your admin.",
     account_inactive: "Your account is inactive. Contact your admin.",
-    no_labs_access: "Lab access is not enabled for your account. Ask your admin to grant the LABS module.",
+    no_labs_access:
+        "Lab access is not enabled for your account. Ask your admin to grant the LABS module.",
     no_hms_access: "Lab access is not enabled for your account.",
     role_missing: "Your account has no role assigned. Contact your admin.",
     internal_server_error: "Something went wrong on our side. Please try again.",
 };
 
+// Right-pane carousel slides — laboratory domain.
+// Same SLIDES shape as HMS (title, sub, Hero, side[3], tone), only the
+// copy + icons change so the visual feels native to a lab workflow.
 const SLIDES = [
     {
         title: "Specimen workflow, one screen",
-        sub: "Collection, processing and reporting — every sample, fully tracked.",
+        sub: "Collection, processing and reporting — every sample tracked from draw to result.",
         Hero: TestTube2,
         side: [FlaskConical, Microscope, ClipboardList],
         tone: "is-blue",
     },
     {
-        title: "Reports patients (and clinicians) trust",
-        sub: "Standardised templates, signed off by your pathologists.",
+        title: "Reports clinicians trust",
+        sub: "Standardised templates, pathologist sign-off, instant patient delivery.",
         Hero: FileText,
         side: [Stethoscope, HeartPulse, Activity],
         tone: "is-violet",
     },
     {
         title: "Auto-billed at report generation",
-        sub: "Walk-ins get a standalone invoice; admitted patients roll into the IPD bill.",
+        sub: "OPD walk-ins get a standalone invoice; admitted patients roll into the IPD bill.",
         Hero: ReceiptText,
         side: [BarChart2, ClipboardList, Activity],
         tone: "is-amber",
     },
     {
         title: "Microbiology to molecular — covered",
-        sub: "Configure your test catalogue once; everything else stays in sync.",
+        sub: "Configure your test catalogue once; every department stays in sync.",
         Hero: Microscope,
-        side: [FlaskConical, TestTube2, Stethoscope],
+        side: [Beaker, Droplet, FlaskConical],
         tone: "is-green",
     },
 ];
@@ -83,30 +89,31 @@ export default function Login() {
         : null;
 
     return (
-        <div className="hms-login">
-            <div className="hms-login__form-pane">
-                <div className="hms-login__form-inner">
-                    <div className="hms-login__brand">
-                        <div className="hms-login__brand-icon">
+        <div className="labs-login">
+            <div className="labs-login__form-pane">
+                <div className="labs-login__form-inner">
+                    <div className="labs-login__brand">
+                        <div className="labs-login__brand-icon">
                             <FlaskConical className="w-5 h-5" />
                         </div>
                         <div>
-                            <h1 className="hms-login__brand-title">ZenoLabs</h1>
+                            <h1 className="labs-login__brand-title">ZenoHosp</h1>
+                            <p className="labs-login__brand-sub">ZenoLabs</p>
                         </div>
                     </div>
 
-                    <div className="hms-login__heading">
+                    <div className="labs-login__heading">
                         <h2>Sign in</h2>
                         <p>to access the Laboratory Information System</p>
                     </div>
 
                     {loggedOut && (
-                        <div className="hms-login__alert is-info">
+                        <div className="labs-login__alert is-info">
                             You have been signed out successfully.
                         </div>
                     )}
                     {errorMessage && (
-                        <div className="hms-login__alert is-danger">{errorMessage}</div>
+                        <div className="labs-login__alert is-danger">{errorMessage}</div>
                     )}
 
                     <button
@@ -114,45 +121,45 @@ export default function Login() {
                         onClick={() => {
                             window.location.href = "/oauth2/authorization/directory";
                         }}
-                        className="hms-login__sso-btn"
+                        className="labs-login__sso-btn"
                     >
                         <Activity className="w-5 h-5" />
                         Sign in with ZenoHosp Directory
                     </button>
 
-                    <p className="hms-login__terms">
+                    <p className="labs-login__terms">
                         Don&apos;t have a ZenoHosp account?{" "}
-                        <span className="hms-login__terms-link">Contact your admin</span>
+                        <span className="labs-login__terms-link">Contact your admin</span>
                     </p>
                 </div>
             </div>
 
-            <div className="hms-login__visual">
-                <div className="hms-login__carousel">
+            <div className="labs-login__visual">
+                <div className="labs-login__carousel">
                     {SLIDES.map((s, i) => {
                         const Hero = s.Hero;
                         return (
                             <div
                                 key={i}
-                                className={`hms-login__slide ${s.tone}${
+                                className={`labs-login__slide ${s.tone}${
                                     i === slide ? " is-active" : ""
                                 }`}
                                 aria-hidden={i !== slide}
                             >
-                                <div className="hms-login__slide-stage">
-                                    <div className="hms-login__slide-hero">
+                                <div className="labs-login__slide-stage">
+                                    <div className="labs-login__slide-hero">
                                         <Hero size={56} strokeWidth={1.6} />
                                     </div>
                                     {s.side.map((Icon, idx) => (
                                         <div
                                             key={idx}
-                                            className={`hms-login__slide-orb is-orb-${idx + 1}`}
+                                            className={`labs-login__slide-orb is-orb-${idx + 1}`}
                                         >
                                             <Icon size={18} strokeWidth={1.8} />
                                         </div>
                                     ))}
                                 </div>
-                                <div className="hms-login__slide-caption">
+                                <div className="labs-login__slide-caption">
                                     <h3>{s.title}</h3>
                                     <p>{s.sub}</p>
                                 </div>
@@ -160,13 +167,13 @@ export default function Login() {
                         );
                     })}
                 </div>
-                <div className="hms-login__dots">
+                <div className="labs-login__dots">
                     {SLIDES.map((_, i) => (
                         <button
                             key={i}
                             type="button"
                             onClick={() => setSlide(i)}
-                            className={`hms-login__dot${i === slide ? " is-active" : ""}`}
+                            className={`labs-login__dot${i === slide ? " is-active" : ""}`}
                             aria-label={`Slide ${i + 1}`}
                         />
                     ))}
