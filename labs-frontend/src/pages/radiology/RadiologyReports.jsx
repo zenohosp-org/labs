@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { labApi } from "@/api/labsClient";
+import { radiologyApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
 import Pagination from "@/components/ui/Pagination";
 import { FileText, Search, Loader2, CheckCircle2, User, Clock, ExternalLink } from "lucide-react";
@@ -15,12 +15,12 @@ const PRIORITY_CLS = {
     STAT: "is-stat",
 };
 
-function LabsReports() {
+function RadiologyReports() {
     const { user } = useAuth();
     const { notify } = useNotification();
     const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
-    const [stats, setStats] = useState({ pendingCollection: 0, awaitingReport: 0, reportGenerated: 0 });
+    const [stats, setStats] = useState({ pendingScan: 0, awaitingReport: 0, reportGenerated: 0 });
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -32,8 +32,8 @@ function LabsReports() {
             // "COMPLETED" is a backend alias matching REPORT_GENERATED + BILLED so
             // auto-billed reports don't disappear from this view.
             const [reports, statsData] = await Promise.all([
-                labApi.list(user.hospitalId, "COMPLETED"),
-                labApi.getStats(user.hospitalId),
+                radiologyApi.list(user.hospitalId, "COMPLETED"),
+                radiologyApi.getStats(user.hospitalId),
             ]);
             setOrders(reports);
             setStats(statsData);
@@ -64,9 +64,9 @@ function LabsReports() {
             <div className="hms-rad-page__head">
                 <div>
                     <h1 className="hms-rad-page__title">
-                        <FileText className="w-5 h-5 hms-rad-page__title-icon" /> Lab Reports
+                        <FileText className="w-5 h-5 hms-rad-page__title-icon" /> Radiology Reports
                     </h1>
-                    <p className="hms-rad-page__sub">View and manage completed lab reports</p>
+                    <p className="hms-rad-page__sub">View and manage completed radiology reports</p>
                 </div>
                 <div className="hms-rad-chip-row">
                     <span className="hms-rad-chip is-emerald">
@@ -79,7 +79,7 @@ function LabsReports() {
                 <Search className="w-4 h-4 hms-rad-rep-search__icon" />
                 <input
                     className="hms-rad-rep-search__input"
-                    placeholder="Search by patient, test, UHID, report ID…"
+                    placeholder="Search by patient, investigation, UHID, report ID…"
                     value={search}
                     onChange={(e) => {
                         setSearch(e.target.value);
@@ -91,7 +91,7 @@ function LabsReports() {
             <div className="hms-rad-section is-slate">
                 <div className="hms-rad-section__head">
                     <p className="hms-rad-section__title">Completed Reports</p>
-                    <p className="hms-rad-section__sub">Lab reports with findings</p>
+                    <p className="hms-rad-section__sub">Radiology reports with findings</p>
                 </div>
                 {loading ? (
                     <div className="hms-rad-section__loading">
@@ -107,7 +107,7 @@ function LabsReports() {
                 ) : (
                     <>
                         <div className="hms-rad-table-head is-reports">
-                            {["Patient", "Test", "Referred By", "Completed", "Priority", "Action"].map((h) => (
+                            {["Patient", "Investigation", "Referred By", "Completed", "Priority", "Action"].map((h) => (
                                 <p key={h} className="hms-rad-table-head__cell">{h}</p>
                             ))}
                         </div>
@@ -141,7 +141,7 @@ function LabsReports() {
                                     </div>
                                     <div>
                                         <button
-                                            onClick={() => navigate(`/labs/reports/${order.id}`)}
+                                            onClick={() => navigate(`/radiology/reports/${order.id}`)}
                                             className="hms-rad-row__view-btn"
                                         >
                                             <ExternalLink className="w-3 h-3" /> View Report
@@ -166,4 +166,4 @@ function LabsReports() {
     );
 }
 
-export { LabsReports as default };
+export { RadiologyReports as default };

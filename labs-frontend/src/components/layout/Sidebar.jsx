@@ -5,7 +5,10 @@ import {
     Home,
     Activity,
     FlaskConical,
+    ScanLine,
     FileText,
+    HeartPulse,
+    Settings2,
     ChevronDown,
     BookOpen,
     BarChart2,
@@ -15,9 +18,17 @@ import {
 
 const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home };
 
-const LAB_LINKS = [
-    { label: "Specimen Queue", to: "/labs/queue", icon: FlaskConical },
-    { label: "Reports", to: "/labs/reports", icon: FileText },
+const RADIOLOGY_LINKS = [
+    { label: "Imaging Queue", to: "/radiology/queue", icon: ScanLine },
+    { label: "Reports", to: "/radiology/reports", icon: FileText },
+];
+
+const CHECKUP_LINKS = [
+    { label: "Packages", to: "/checkups/packages", icon: HeartPulse },
+];
+
+const ADMIN_LINKS = [
+    { label: "Services", to: "/services", icon: Settings2 },
 ];
 
 const EXTERNAL_APPS = [
@@ -31,8 +42,11 @@ const EXTERNAL_APPS = [
 function Sidebar({ isOpen }) {
     const { user } = useAuth();
     const location = useLocation();
-    const labActive = location.pathname.startsWith("/labs/queue") || location.pathname.startsWith("/labs/reports");
-    const [labOpen, setLabOpen] = useState(() => labActive);
+
+    const radActive = location.pathname.startsWith("/radiology");
+    const checkupActive = location.pathname.startsWith("/checkups");
+    const [radOpen, setRadOpen] = useState(() => radActive);
+    const [checkupOpen, setCheckupOpen] = useState(() => checkupActive);
 
     const renderLink = (link, indent = false) => {
         const Icon = link.icon;
@@ -66,25 +80,12 @@ function Sidebar({ isOpen }) {
         const Icon = app.icon;
         const baseCls = `hms-sidebar__ext${isOpen ? "" : " is-icon-only"}`;
         return isOpen ? (
-            <a
-                key={app.href}
-                href={app.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={baseCls}
-            >
+            <a key={app.href} href={app.href} target="_blank" rel="noopener noreferrer" className={baseCls}>
                 <Icon className="hms-sidebar__link-icon" />
                 <span className="hms-sidebar__link-label">{app.label}</span>
             </a>
         ) : (
-            <a
-                key={app.href}
-                href={app.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={app.label}
-                className={baseCls}
-            >
+            <a key={app.href} href={app.href} target="_blank" rel="noopener noreferrer" title={app.label} className={baseCls}>
                 <Icon className="hms-sidebar__link-icon" />
             </a>
         );
@@ -100,10 +101,7 @@ function Sidebar({ isOpen }) {
                 >
                     <AccIcon className="hms-sidebar__link-icon" />
                     <span className="hms-sidebar__link-label">{label}</span>
-                    <ChevronDown
-                        size={15}
-                        className={`hms-sidebar__acc-chevron${open ? " is-open" : ""}`}
-                    />
+                    <ChevronDown size={15} className={`hms-sidebar__acc-chevron${open ? " is-open" : ""}`} />
                 </button>
                 {open && (
                     <div className="hms-sidebar__acc-body">
@@ -132,8 +130,12 @@ function Sidebar({ isOpen }) {
                 {isOpen && <div className="hms-sidebar__section-label">Main Menu</div>}
                 {renderLink(DASHBOARD_LINK)}
 
-                {isOpen && <div className="hms-sidebar__section-label is-spaced">Laboratory</div>}
-                {renderAccordionSection(LAB_LINKS, "Lab Orders", FlaskConical, labOpen, setLabOpen, labActive)}
+                {isOpen && <div className="hms-sidebar__section-label is-spaced">Diagnostics</div>}
+                {renderAccordionSection(RADIOLOGY_LINKS, "Radiology", ScanLine, radOpen, setRadOpen, radActive)}
+                {renderAccordionSection(CHECKUP_LINKS, "Health Checkups", HeartPulse, checkupOpen, setCheckupOpen, checkupActive)}
+
+                {isOpen && <div className="hms-sidebar__section-label is-spaced">Admin</div>}
+                {ADMIN_LINKS.map((link) => renderLink(link))}
             </nav>
 
             <div className="hms-sidebar__footer">

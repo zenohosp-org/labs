@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { labApi } from "@/api/labsClient";
+import { radiologyApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
-import { ArrowLeft, Printer, Loader2, FlaskConical, AlertCircle } from "lucide-react";
+import { ArrowLeft, Printer, Loader2, ScanLine, AlertCircle } from "lucide-react";
 import { fmtDateTime } from "@/utils/date";
 
 const PRIORITY_CLS = {
@@ -12,7 +12,7 @@ const PRIORITY_CLS = {
     STAT: "is-stat",
 };
 
-function LabsReportView() {
+function RadiologyReportView() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -21,7 +21,7 @@ function LabsReportView() {
 
     useEffect(() => {
         if (!id) return;
-        labApi
+        radiologyApi
             .get(Number(id))
             .then(setOrder)
             .catch(() => setOrder(null))
@@ -40,10 +40,7 @@ function LabsReportView() {
             <div className="hms-rad-rep-notfound">
                 <AlertCircle className="w-5 h-5 text-gray-300" />
                 <p className="hms-rad-rep-notfound__text">Report not found.</p>
-                <button
-                    onClick={() => navigate("/labs/reports")}
-                    className="hms-btn-secondary is-sm"
-                >
+                <button onClick={() => navigate("/radiology/reports")} className="hms-btn-secondary is-sm">
                     ← Back to Reports
                 </button>
             </div>
@@ -53,7 +50,7 @@ function LabsReportView() {
     return (
         <div className="hms-rad-rep-view">
             <div className="hms-rad-rep-toolbar">
-                <button onClick={() => navigate("/labs/reports")} className="hms-rad-rep-back-btn">
+                <button onClick={() => navigate("/radiology/reports")} className="hms-rad-rep-back-btn">
                     <ArrowLeft className="w-4 h-4" /> Back to Reports
                 </button>
                 <button onClick={() => window.print()} className="hms-rad-rep-print-btn">
@@ -66,17 +63,17 @@ function LabsReportView() {
                     <div className="hms-rad-rep-card__hdr-row">
                         <div className="hms-rad-rep-card__hosp">
                             <div className="hms-rad-rep-card__hosp-icon">
-                                <FlaskConical className="w-5 h-5 text-gray-900" />
+                                <ScanLine className="w-5 h-5 text-gray-900" />
                             </div>
                             <div>
                                 <h1 className="hms-rad-rep-card__hosp-name">
                                     {user?.hospitalName ?? "Hospital"}
                                 </h1>
-                                <p className="hms-rad-rep-card__hosp-dept">Laboratory Department</p>
+                                <p className="hms-rad-rep-card__hosp-dept">Radiology Department</p>
                             </div>
                         </div>
                         <div className="hms-rad-rep-card__dept">
-                            <span className="hms-rad-rep-card__dept-chip">Department of Laboratory</span>
+                            <span className="hms-rad-rep-card__dept-chip">Department of Radiology</span>
                             {order.reportId && (
                                 <p className="hms-rad-rep-card__report-id">
                                     Report ID:{" "}
@@ -95,7 +92,7 @@ function LabsReportView() {
                         <InfoRow label="Patient ID" value={fmtId(order.patientUhid)} bold />
                         <InfoRow label="Referred By" value={order.referredByName} />
                         <InfoRow label="Technician" value={order.technicianName ?? "N/A"} />
-                        <InfoRow label="Collection Date" value={fmtDateTime(order.collectedAt)} />
+                        <InfoRow label="Scan Date" value={fmtDateTime(order.scannedAt)} />
                         <InfoRow label="Report Date" value={fmtDateTime(order.reportedAt)} />
                     </div>
                 </div>
@@ -104,14 +101,6 @@ function LabsReportView() {
                     <div className="hms-rad-rep-inv">
                         <div className="hms-rad-rep-inv__tab">{order.serviceName}</div>
                         <div className="hms-rad-rep-inv__body">
-                            {order.sampleType && (
-                                <p className="hms-rad-rep-inv__bill">
-                                    Sample:{" "}
-                                    <span className="hms-rad-rep-inv__bill-strong">
-                                        {order.sampleType}
-                                    </span>
-                                </p>
-                            )}
                             {order.billNo && (
                                 <p className="hms-rad-rep-inv__bill">
                                     Bill No:{" "}
@@ -145,7 +134,7 @@ function LabsReportView() {
                         </div>
                         <div className="hms-rad-rep-sig__doc">
                             <div className="hms-rad-rep-sig__doc-line" />
-                            <p className="hms-rad-rep-sig__doc-name">Pathologist</p>
+                            <p className="hms-rad-rep-sig__doc-name">Radiologist</p>
                             <p className="hms-rad-rep-sig__doc-stamp">Signature &amp; Stamp</p>
                         </div>
                     </div>
@@ -166,4 +155,4 @@ function InfoRow({ label, value, bold }) {
     );
 }
 
-export { LabsReportView as default };
+export { RadiologyReportView as default };

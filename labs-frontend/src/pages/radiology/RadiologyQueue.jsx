@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { labApi } from "@/api/labsClient";
+import { radiologyApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
 import {
-    FlaskConical,
+    ScanLine,
     Clock,
     CheckCircle2,
     Plus,
@@ -24,10 +24,10 @@ const PRIORITY_META = {
     STAT: { cls: "is-stat", icon: Zap },
 };
 
-function LabsQueue() {
+function RadiologyQueue() {
     const { user } = useAuth();
     const { notify } = useNotification();
-    const [stats, setStats] = useState({ pendingCollection: 0, awaitingReport: 0, reportGenerated: 0 });
+    const [stats, setStats] = useState({ pendingScan: 0, awaitingReport: 0, reportGenerated: 0 });
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -35,20 +35,20 @@ function LabsQueue() {
     const [showNewModal, setShowNewModal] = useState(false);
     const [writeReport, setWriteReport] = useState(null);
     const [actionMenu, setActionMenu] = useState(null);
-    const [markingCollected, setMarkingCollected] = useState(null);
+    const [markingScanned, setMarkingScanned] = useState(null);
 
     const load = useCallback(async () => {
         if (!user?.hospitalId) return;
         setLoading(true);
         try {
             const [ordersData, statsData] = await Promise.all([
-                labApi.list(user.hospitalId),
-                labApi.getStats(user.hospitalId),
+                radiologyApi.list(user.hospitalId),
+                radiologyApi.getStats(user.hospitalId),
             ]);
             setOrders(ordersData);
             setStats(statsData);
         } catch {
-            notify("Failed to load lab queue", "error");
+            notify("Failed to load radiology queue", "error");
         } finally {
             setLoading(false);
         }
@@ -58,21 +58,21 @@ function LabsQueue() {
         load();
     }, [load]);
 
-    const handleMarkCollected = async (order) => {
-        setMarkingCollected(order.id);
+    const handleMarkScanned = async (order) => {
+        setMarkingScanned(order.id);
         setActionMenu(null);
         try {
-            await labApi.markCollected(order.id);
-            notify("Sample collected — moved to Awaiting Report", "success");
+            await radiologyApi.markScanned(order.id);
+            notify("Marked as scanned — moved to Awaiting Report", "success");
             load();
         } catch {
             notify("Failed to update status", "error");
         } finally {
-            setMarkingCollected(null);
+            setMarkingScanned(null);
         }
     };
 
-    const pending = orders.filter((o) => o.status === "PENDING_COLLECTION");
+    const pending = orders.filter((o) => o.status === "PENDING_SCAN");
     const awaiting = orders.filter((o) => o.status === "AWAITING_REPORT");
 
     const applyFilters = (list) => {
@@ -96,20 +96,19 @@ function LabsQueue() {
 
     return (
         <div className="hms-rad-page" onClick={() => setActionMenu(null)}>
-            {/* Page header */}
             <div className="hms-rad-page__head">
                 <div>
                     <h1 className="hms-rad-page__title">
-                        <FlaskConical className="w-5 h-5 hms-rad-page__title-icon" /> Lab Queue
+                        <ScanLine className="w-5 h-5 hms-rad-page__title-icon" /> Radiology Queue
                     </h1>
                     <p className="hms-rad-page__sub">
-                        Blood work, urinalysis, microbiology, biochemistry and other diagnostic tests
+                        X-Ray, CT Scan, MRI, Ultrasound, and other imaging investigations
                     </p>
                 </div>
                 <div className="hms-rad-page__chips">
                     <div className="hms-rad-chip-row">
                         <span className="hms-rad-chip is-amber">
-                            <FlaskConical className="w-3 h-3" /> {stats.pendingCollection} pending collection
+                            <ScanLine className="w-3 h-3" /> {stats.pendingScan} awaiting scan
                         </span>
                         <span className="hms-rad-chip is-slate">
                             <Clock className="w-3 h-3" /> {stats.awaitingReport} awaiting report
@@ -124,14 +123,13 @@ function LabsQueue() {
                 </div>
             </div>
 
-            {/* Stat cards */}
             <div className="hms-rad-stat-grid">
                 <div className="hms-rad-stat is-amber">
                     <div>
-                        <p className="hms-rad-stat__label">Pending Collection</p>
-                        <p className="hms-rad-stat__value">{stats.pendingCollection}</p>
+                        <p className="hms-rad-stat__label">Pending Scans</p>
+                        <p className="hms-rad-stat__value">{stats.pendingScan}</p>
                     </div>
-                    <FlaskConical className="hms-rad-stat__icon" />
+                    <ScanLine className="hms-rad-stat__icon" />
                 </div>
                 <div className="hms-rad-stat is-slate">
                     <div>
@@ -149,7 +147,6 @@ function LabsQueue() {
                 </div>
             </div>
 
-            {/* Search + filters */}
             <div className="hms-rad-filterbar">
                 <div className="hms-rad-priority-row">
                     {["ALL", "ROUTINE", "URGENT", "STAT"].map((p) => (
@@ -180,35 +177,33 @@ function LabsQueue() {
             ) : (
                 <>
                     <QueueSection
-                        title="Collection Queue (Ready for Sample)"
-                        subtitle="Orders waiting for the sample to be drawn or collected"
+                        title="Imaging Queue (Ready for Scan)"
+                        subtitle="Orders waiting for the imaging procedure to be performed"
                         colorMod="is-amber"
                         orders={filteredPending}
-                        emptyText="No pending collections"
+                        emptyText="No pending scans"
                         emptySubtext="New orders will appear here"
-                        actionLabel="Mark Collected"
+                        actionLabel="Mark Scanned"
                         actionMod="is-amber"
-                        onAction={handleMarkCollected}
-                        loadingId={markingCollected}
+                        onAction={handleMarkScanned}
+                        loadingId={markingScanned}
                         actionMenu={actionMenu}
                         setActionMenu={setActionMenu}
-                        onWriteReport={() => {}}
-                        showCollectAction
+                        showScanAction
                     />
                     <QueueSection
                         title="Awaiting Reports"
-                        subtitle="Samples processed — pathologist findings pending"
+                        subtitle="Scans completed — radiologist findings pending"
                         colorMod="is-slate"
                         orders={filteredAwaiting}
-                        emptyText="No samples awaiting reports"
-                        emptySubtext="Processed samples will appear here"
+                        emptyText="No scans awaiting reports"
+                        emptySubtext="Completed scans will appear here"
                         actionLabel="Write Report"
                         actionMod="is-slate"
                         onAction={(o) => setWriteReport(o)}
                         loadingId={null}
                         actionMenu={actionMenu}
                         setActionMenu={setActionMenu}
-                        onWriteReport={(o) => setWriteReport(o)}
                     />
                 </>
             )}
@@ -247,7 +242,7 @@ function QueueSection({
     actionMod,
     onAction,
     loadingId,
-    showCollectAction,
+    showScanAction,
 }) {
     return (
         <div className={`hms-rad-section ${colorMod}`}>
@@ -257,7 +252,7 @@ function QueueSection({
             </div>
             {orders.length === 0 ? (
                 <div className="hms-rad-section__empty">
-                    <FlaskConical className="w-5 h-5 hms-rad-section__empty-icon" />
+                    <ScanLine className="w-5 h-5 hms-rad-section__empty-icon" />
                     <p className="hms-rad-section__empty-title">{emptyText}</p>
                     <p className="hms-rad-section__empty-sub">{emptySubtext}</p>
                 </div>
@@ -309,7 +304,7 @@ function QueueSection({
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
                                 </div>
                                 <div className="hms-rad-row__action">
-                                    {showCollectAction ? (
+                                    {showScanAction ? (
                                         <button
                                             onClick={() => onAction(order)}
                                             disabled={loadingId === order.id}
@@ -335,4 +330,4 @@ function QueueSection({
     );
 }
 
-export { LabsQueue as default };
+export { RadiologyQueue as default };

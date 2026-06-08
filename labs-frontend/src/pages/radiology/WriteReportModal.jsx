@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNotification } from "@/context/NotificationContext";
-import { labApi } from "@/api/labsClient";
+import { radiologyApi } from "@/api/labsClient";
 import { X, FileText } from "lucide-react";
 
 function WriteReportModal({ order, onClose, onSaved }) {
@@ -17,7 +17,7 @@ function WriteReportModal({ order, onClose, onSaved }) {
         }
         setSaving(true);
         try {
-            await labApi.generateReport(order.id, findings, observation);
+            await radiologyApi.generateReport(order.id, findings, observation);
             notify("Report generated", "success");
             onSaved();
         } catch {
@@ -51,7 +51,7 @@ function WriteReportModal({ order, onClose, onSaved }) {
                         <textarea
                             rows={5}
                             className="hms-rad-textarea"
-                            placeholder="Enter lab findings — values, ranges, observations…"
+                            placeholder="Enter radiology findings…"
                             value={findings}
                             onChange={(e) => setFindings(e.target.value)}
                             autoFocus
@@ -62,7 +62,7 @@ function WriteReportModal({ order, onClose, onSaved }) {
                         <textarea
                             rows={3}
                             className="hms-rad-textarea"
-                            placeholder="e.g. Values within normal limits…"
+                            placeholder="e.g. Study appears within normal limits…"
                             value={observation}
                             onChange={(e) => setObservation(e.target.value)}
                         />
