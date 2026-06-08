@@ -1,0 +1,7 @@
+/* ===================================================================
+   HMS — dashboard module
+   -------------------------------------------------------------------
+   Page-specific compositions for the dashboard area. Atomic helpers live in
+   utilities.css; reusable patterns (avatar, icon tile, kv row, etc.)
+   live in hms-system.css. This file contains only what's unique to dashboard.
+   =================================================================== */

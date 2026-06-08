@@ -1,0 +1,28 @@
+# ─── Backend (Maven / Spring Boot) ───
+labs-backend/target/
+labs-backend/.mvn/wrapper/maven-wrapper.jar
+labs-backend/HELP.md
+labs-backend/.idea/
+labs-backend/*.iml
+labs-backend/*.log
+
+# Local-profile properties may contain DB / SSO secrets — never commit
+labs-backend/src/main/resources/application-local.properties
+
+# ─── Frontend (Vite / React) ───
+labs-frontend/node_modules/
+labs-frontend/dist/
+labs-frontend/.vite/
+labs-frontend/*.log
+labs-frontend/.env
+labs-frontend/.env.local
+labs-frontend/.env.*.local
+
+# ─── Editors / OS ───
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# ─── Claude harness (local-only) ───
+.claude/
