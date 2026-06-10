@@ -134,6 +134,28 @@ export const hospitalServiceApi = {
     },
 };
 
+// ── Billing (proxied to HMS) ───────────────────────────
+// Bank accounts list + payment collection. HMS owns the invoice lifecycle;
+// labs just gives lab/radiology staff a counter-side payment action.
+export const billingApi = {
+    listBankAccounts: async (hospitalId) => {
+        const { data } = await api.get("/api/bank-accounts", { params: { hospitalId } });
+        return data;
+    },
+    /**
+     * Collect a payment against an invoice the labs auto-bill flow already
+     * created. Mirrors HMS BillingController PaymentRequest:
+     *   { amount, paymentMethod, bankAccountId, collectedBy }
+     */
+    collectPayment: async (invoiceId, payload) => {
+        const { data } = await api.post(
+            `/api/billing/invoices/${invoiceId}/payments`,
+            payload,
+        );
+        return data;
+    },
+};
+
 // ── Specializations (proxied read-only to HMS) ─────────
 export const specializationApi = {
     list: async (hospitalId) => {

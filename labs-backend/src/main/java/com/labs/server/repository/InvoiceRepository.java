@@ -44,4 +44,19 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         ORDER BY inv.createdAt DESC
         """)
     List<Invoice> findByRadiologyOrderId(@Param("radiologyOrderId") Long radiologyOrderId);
+
+    /**
+     * Batch variant — one query for a whole page of orders instead of N
+     * round-trips from toDTO. Returns an Object[] per match (radiologyOrderId,
+     * Invoice) so the service can group into a Map without an extra scan.
+     * Backed by the existing FK index on invoice_items.radiology_order_id.
+     */
+    @Query("""
+        SELECT ii.radiologyOrderId, inv
+        FROM Invoice inv JOIN inv.items ii
+        WHERE ii.radiologyOrderId IN :radiologyOrderIds
+        ORDER BY inv.createdAt DESC
+        """)
+    List<Object[]> findInvoicesForRadiologyOrders(
+            @Param("radiologyOrderIds") java.util.Collection<Long> radiologyOrderIds);
 }

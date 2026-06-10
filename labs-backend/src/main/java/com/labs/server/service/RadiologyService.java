@@ -51,18 +51,19 @@ public class RadiologyService {
     private final RadiologyBillingService billingService;
 
     public List<RadiologyOrderDTO> getOrders(UUID hospitalId, String status) {
+        List<RadiologyOrder> rows;
         if (status != null && !status.isBlank()) {
             if ("COMPLETED".equalsIgnoreCase(status)) {
-                return orderRepository
-                        .findByHospitalIdAndStatusInOrderByCreatedAtDesc(hospitalId, COMPLETED_STATUSES)
-                        .stream().map(this::toDTO).collect(Collectors.toList());
+                rows = orderRepository
+                        .findByHospitalIdAndStatusInOrderByCreatedAtDesc(hospitalId, COMPLETED_STATUSES);
+            } else {
+                rows = orderRepository.findByHospitalIdAndStatusOrderByCreatedAtDesc(
+                        hospitalId, RadiologyStatus.valueOf(status));
             }
-            RadiologyStatus rs = RadiologyStatus.valueOf(status);
-            return orderRepository.findByHospitalIdAndStatusOrderByCreatedAtDesc(hospitalId, rs)
-                    .stream().map(this::toDTO).collect(Collectors.toList());
+        } else {
+            rows = orderRepository.findByHospitalIdOrderByCreatedAtDesc(hospitalId);
         }
-        return orderRepository.findByHospitalIdOrderByCreatedAtDesc(hospitalId)
-                .stream().map(this::toDTO).collect(Collectors.toList());
+        return toDTOs(rows);
     }
 
     public long countCompletedReports(UUID hospitalId) {
@@ -70,13 +71,11 @@ public class RadiologyService {
     }
 
     public List<RadiologyOrderDTO> getByPatient(Integer patientId) {
-        return orderRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
-                .stream().map(this::toDTO).collect(Collectors.toList());
+        return toDTOs(orderRepository.findByPatientIdOrderByCreatedAtDesc(patientId));
     }
 
     public List<RadiologyOrderDTO> getByAdmission(UUID admissionId) {
-        return orderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId)
-                .stream().map(this::toDTO).collect(Collectors.toList());
+        return toDTOs(orderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId));
     }
 
     public RadiologyOrderDTO getOrder(Long id) {
@@ -176,18 +175,45 @@ public class RadiologyService {
         return sb.toString();
     }
 
-    private RadiologyOrderDTO toDTO(RadiologyOrder o) {
-        String patientName = o.getPatient().getFirstName()
-                + (o.getPatient().getLastName() != null ? " " + o.getPatient().getLastName() : "");
+    /**
+     * List variant that pre-fetches all linked invoices in one query — kills
+     * the N+1 we'd otherwise hit when serialising a page of orders.
+     * Falls back to the single-row toDTO for empty lists so the wire shape
+     * stays identical.
+     */
+    private List<RadiologyOrderDTO> toDTOs(List<RadiologyOrder> rows) {
+        if (rows == null || rows.isEmpty()) return java.util.Collections.emptyList();
+        java.util.Set<Long> ids = rows.stream()
+                .map(RadiologyOrder::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        // Payment surface — derived live from the linked invoice (one extra
-        // SELECT per order, indexed by radiology_order_id). Cheap because the
-        // queue/reports views never load more than a couple of hundred rows
-        // and the JOIN target is an indexed FK. Null when the order has never
-        // been billed (PENDING_SCAN / AWAITING_REPORT pre-report).
-        com.labs.server.entity.Invoice linkedInvoice = invoiceRepository
+        // Group by radiology_order_id → most recent invoice. The query orders
+        // by createdAt DESC so the first hit per id wins on putIfAbsent.
+        java.util.Map<Long, com.labs.server.entity.Invoice> byOrder = new java.util.HashMap<>();
+        if (!ids.isEmpty()) {
+            for (Object[] tuple : invoiceRepository.findInvoicesForRadiologyOrders(ids)) {
+                Long orderId = (Long) tuple[0];
+                com.labs.server.entity.Invoice inv = (com.labs.server.entity.Invoice) tuple[1];
+                byOrder.putIfAbsent(orderId, inv);
+            }
+        }
+        return rows.stream()
+                .map(o -> toDTO(o, byOrder.get(o.getId())))
+                .collect(Collectors.toList());
+    }
+
+    /** Single-row entry point used by createOrder/markScanned/generateReport/getOrder. */
+    private RadiologyOrderDTO toDTO(RadiologyOrder o) {
+        com.labs.server.entity.Invoice linked = invoiceRepository
                 .findByRadiologyOrderId(o.getId())
                 .stream().findFirst().orElse(null);
+        return toDTO(o, linked);
+    }
+
+    private RadiologyOrderDTO toDTO(RadiologyOrder o, com.labs.server.entity.Invoice linkedInvoice) {
+        String patientName = o.getPatient().getFirstName()
+                + (o.getPatient().getLastName() != null ? " " + o.getPatient().getLastName() : "");
 
         RadiologyOrderDTO.RadiologyOrderDTOBuilder b = RadiologyOrderDTO.builder()
                 .id(o.getId())
@@ -218,6 +244,7 @@ public class RadiologyService {
         if (linkedInvoice != null) {
             b.invoiceStatus(linkedInvoice.getStatus() != null ? linkedInvoice.getStatus().name() : null)
              .invoiceNumber(linkedInvoice.getInvoiceNumber())
+             .invoiceId(linkedInvoice.getId())
              .invoicePaid(linkedInvoice.getPaidAmount())
              .invoiceTotal(linkedInvoice.getTotal());
         }

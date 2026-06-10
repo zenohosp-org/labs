@@ -45,6 +45,8 @@ public class RadiologyOrderDTO {
     // character so the frontend can colour-code without a second lookup.
     private String invoiceStatus;
     private String invoiceNumber;
+    /** Invoice UUID — needed when the labs UI calls HMS's collect-payment endpoint. */
+    private UUID invoiceId;
     private BigDecimal invoicePaid;
     private BigDecimal invoiceTotal;
 }

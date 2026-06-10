@@ -14,10 +14,12 @@ import {
     Stethoscope,
     AlertTriangle,
     Zap,
+    IndianRupee,
 } from "lucide-react";
 import NewOrderModal from "./NewOrderModal";
 import WriteReportModal from "./WriteReportModal";
-import { paymentChipFor, formatPaymentSummary } from "@/utils/paymentBadge";
+import CollectPaymentModal from "./CollectPaymentModal";
+import PaymentCell from "@/components/PaymentCell";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -35,6 +37,7 @@ function RadiologyQueue() {
     const [priorityFilter, setPriorityFilter] = useState("ALL");
     const [showNewModal, setShowNewModal] = useState(false);
     const [writeReport, setWriteReport] = useState(null);
+    const [collectPayment, setCollectPayment] = useState(null);
     const [actionMenu, setActionMenu] = useState(null);
     const [markingScanned, setMarkingScanned] = useState(null);
 
@@ -190,6 +193,7 @@ function RadiologyQueue() {
                         loadingId={markingScanned}
                         actionMenu={actionMenu}
                         setActionMenu={setActionMenu}
+                        onCollect={(o) => setCollectPayment(o)}
                         showScanAction
                     />
                     <QueueSection
@@ -205,6 +209,7 @@ function RadiologyQueue() {
                         loadingId={null}
                         actionMenu={actionMenu}
                         setActionMenu={setActionMenu}
+                        onCollect={(o) => setCollectPayment(o)}
                     />
                 </>
             )}
@@ -228,6 +233,16 @@ function RadiologyQueue() {
                     }}
                 />
             )}
+            {collectPayment && (
+                <CollectPaymentModal
+                    order={collectPayment}
+                    onClose={() => setCollectPayment(null)}
+                    onPaid={() => {
+                        setCollectPayment(null);
+                        load();
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -243,6 +258,7 @@ function QueueSection({
     actionMod,
     onAction,
     loadingId,
+    onCollect,
     showScanAction,
 }) {
     return (
@@ -302,18 +318,7 @@ function QueueSection({
                                     </span>
                                 </div>
                                 <div>
-                                    {(() => {
-                                        const chip = paymentChipFor(order);
-                                        const summary = formatPaymentSummary(order);
-                                        return (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className={`hms-rad-chip ${chip.cls}`}>{chip.label}</span>
-                                                {summary && (
-                                                    <span className="text-12 text-gray-500">{summary}</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                                    <PaymentCell order={order} onCollect={onCollect} />
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>

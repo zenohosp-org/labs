@@ -16,6 +16,7 @@ export {
     hospitalServiceApi,
     specializationApi,
     checkupApi,
+    billingApi,
     labPackageApi,
     referenceRangeApi,
     admissionApi,

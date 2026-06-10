@@ -7,7 +7,8 @@ import { fmtId } from "@/utils/idFormat";
 import Pagination from "@/components/ui/Pagination";
 import { FileText, Search, Loader2, CheckCircle2, User, Clock, ExternalLink } from "lucide-react";
 import { fmtDateTime } from "@/utils/date";
-import { paymentChipFor, formatPaymentSummary } from "@/utils/paymentBadge";
+import PaymentCell from "@/components/PaymentCell";
+import CollectPaymentModal from "./CollectPaymentModal";
 
 const PAGE_SIZE = 30;
 const PRIORITY_CLS = {
@@ -25,6 +26,7 @@ function RadiologyReports() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
+    const [collectPayment, setCollectPayment] = useState(null);
 
     const load = useCallback(async () => {
         if (!user?.hospitalId) return;
@@ -141,18 +143,7 @@ function RadiologyReports() {
                                         </span>
                                     </div>
                                     <div>
-                                        {(() => {
-                                            const chip = paymentChipFor(order);
-                                            const summary = formatPaymentSummary(order);
-                                            return (
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className={`hms-rad-chip ${chip.cls}`}>{chip.label}</span>
-                                                    {summary && (
-                                                        <span className="text-12 text-gray-500">{summary}</span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
+                                        <PaymentCell order={order} onCollect={setCollectPayment} />
                                     </div>
                                     <div>
                                         <button
@@ -177,6 +168,17 @@ function RadiologyReports() {
                     </>
                 )}
             </div>
+
+            {collectPayment && (
+                <CollectPaymentModal
+                    order={collectPayment}
+                    onClose={() => setCollectPayment(null)}
+                    onPaid={() => {
+                        setCollectPayment(null);
+                        load();
+                    }}
+                />
+            )}
         </div>
     );
 }
