@@ -156,7 +156,21 @@ export const billingApi = {
     },
 };
 
+// ── Departments (proxied read-only to HMS) ─────────────
+// Primary catalogue for the Services page now that HMS migrated
+// hospital_services from specialization_id → department_id.
+export const departmentApi = {
+    list: async (hospitalId, activeOnly = false) => {
+        const { data } = await api.get("/api/departments", {
+            params: { hospitalId, activeOnly },
+        });
+        return data;
+    },
+};
+
 // ── Specializations (proxied read-only to HMS) ─────────
+// Retained for callers that still reference specialization names; not used
+// by the Services page anymore.
 export const specializationApi = {
     list: async (hospitalId) => {
         const { data } = await api.get("/api/specializations", { params: { hospitalId } });

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { hospitalServiceApi, specializationApi } from "@/utils/api";
+import { hospitalServiceApi, departmentApi } from "@/utils/api";
 import {
     Alert,
     Badge,
@@ -38,7 +38,7 @@ function Services() {
     const { notify } = useNotification();
 
     const [services, setServices] = useState([]);
-    const [specializations, setSpecializations] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -55,12 +55,12 @@ function Services() {
         if (!user?.hospitalId) return;
         setLoading(true);
         try {
-            const [svcData, specData] = await Promise.all([
+            const [svcData, deptData] = await Promise.all([
                 hospitalServiceApi.list(user.hospitalId),
-                specializationApi.list(user.hospitalId),
+                departmentApi.list(user.hospitalId),
             ]);
             setServices(svcData);
-            setSpecializations(specData);
+            setDepartments(deptData);
         } catch {
             notify("Failed to load services", "error");
         } finally {
@@ -73,18 +73,18 @@ function Services() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.hospitalId]);
 
-    const getSpecName = (id) =>
-        specializations.find((s) => s.id === id)?.name || "—";
+    const getDeptName = (id) =>
+        departments.find((d) => d.id === id)?.name || "—";
 
     const filteredServices = useMemo(() => {
         return services.filter((s) => {
-            const specName = getSpecName(s.specializationId);
+            const deptName = getDeptName(s.departmentId);
             const q = search.toLowerCase();
             const matchesSearch =
-                s.name.toLowerCase().includes(q) || specName.toLowerCase().includes(q);
+                s.name.toLowerCase().includes(q) || deptName.toLowerCase().includes(q);
             const matchesDept =
                 activeFilters.departments.length === 0 ||
-                activeFilters.departments.includes(specName);
+                activeFilters.departments.includes(deptName);
             const matchesStatus =
                 activeFilters.statuses.length === 0 ||
                 (activeFilters.statuses.includes("Active") && s.isActive) ||
@@ -102,7 +102,7 @@ function Services() {
             return matchesSearch && matchesDept && matchesStatus && matchesPrice;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [services, search, activeFilters, specializations]);
+    }, [services, search, activeFilters, departments]);
 
     const paginated = filteredServices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     const totalPages = Math.ceil(filteredServices.length / PAGE_SIZE);
@@ -150,7 +150,7 @@ function Services() {
             width: "22%",
             render: (s) => (
                 <Badge tone="neutral" soft>
-                    {getSpecName(s.specializationId)}
+                    {getDeptName(s.departmentId)}
                 </Badge>
             ),
         },
@@ -223,7 +223,7 @@ function Services() {
     );
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="zu-page">
             <PageHeader
                 title={titleNode}
                 actions={
@@ -236,7 +236,7 @@ function Services() {
                 }
             />
 
-            <div className="hms-page-content">
+            <div className="zu-page-content">
                 <div className="flex items-center gap-3">
                     <div className="flex-1">
                         <SearchBar
@@ -270,7 +270,7 @@ function Services() {
                                 setActiveFilters(f);
                                 setPage(1);
                             }}
-                            specializations={specializations}
+                            departments={departments}
                         />
                     </div>
                 </div>
@@ -279,9 +279,6 @@ function Services() {
                     columns={columns}
                     data={paginated}
                     loading={loading}
-                    loadingMessage={
-                        <span className="text-gray-500">Loading services…</span>
-                    }
                     emptyMessage={
                         <div className="hms-cell-empty">
                             <span className="hms-cell-empty__icon">
@@ -307,14 +304,14 @@ function Services() {
                         />
                     </div>
                 )}
-            </div>
+            
 
             {modal.open && (
                 <AddServiceModal
                     isOpen={modal.open}
                     onClose={() => setModal({ open: false, service: null })}
                     service={modal.service}
-                    specializations={specializations}
+                    departments={departments}
                     onSuccess={loadData}
                 />
             )}
@@ -355,6 +352,7 @@ function Services() {
                     </div>
                 )}
             </Modal>
+                    </div>
         </div>
     );
 }

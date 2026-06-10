@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 
-function ServiceFilters({ isOpen, onClose, onFilter, specializations }) {
+function ServiceFilters({ isOpen, onClose, onFilter, departments }) {
   const [tempFilters, setTempFilters] = useState({
     departments: [],
     amountRange: "",
@@ -48,14 +48,14 @@ function ServiceFilters({ isOpen, onClose, onFilter, specializations }) {
             <button onClick={resetDepartments} className="hms-filter-panel__reset">Reset</button>
           </div>
           <div className="hms-filter-panel__chips">
-            {specializations.map((spec) => (
+            {departments.map((dept) => (
               <button
-                key={spec.id}
-                onClick={() => toggleDepartment(spec.name)}
-                className={`hms-filter-panel__chip ${tempFilters.departments.includes(spec.name) ? "is-on" : ""}`}
+                key={dept.id}
+                onClick={() => toggleDepartment(dept.name)}
+                className={`hms-filter-panel__chip ${tempFilters.departments.includes(dept.name) ? "is-on" : ""}`}
               >
-                {tempFilters.departments.includes(spec.name) && <X className="w-3 h-3" />}
-                {spec.name}
+                {tempFilters.departments.includes(dept.name) && <X className="w-3 h-3" />}
+                {dept.name}
               </button>
             ))}
           </div>

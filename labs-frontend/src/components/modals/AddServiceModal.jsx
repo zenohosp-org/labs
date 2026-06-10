@@ -25,13 +25,13 @@ import SearchableSelect from "@/components/ui/SearchableSelect";
  * migration and will happen later. Lives inside an <FormGroup> so the
  * label and surrounding rhythm match the rest of the form.
  */
-function AddServiceModal({ isOpen, onClose, service, specializations, onSuccess }) {
+function AddServiceModal({ isOpen, onClose, service, departments, onSuccess }) {
     const { user } = useAuth();
     const { notify } = useNotification();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
-        specializationId: "",
+        departmentId: "",
         price: "",
         gstRate: "",
     });
@@ -40,7 +40,7 @@ function AddServiceModal({ isOpen, onClose, service, specializations, onSuccess 
         if (service) {
             setFormData({
                 name: service.name,
-                specializationId: service.specializationId,
+                departmentId: service.departmentId,
                 price: service.price.toString(),
                 gstRate:
                     service.gstRate != null && service.gstRate !== 0
@@ -48,7 +48,7 @@ function AddServiceModal({ isOpen, onClose, service, specializations, onSuccess 
                         : "",
             });
         } else {
-            setFormData({ name: "", specializationId: "", price: "", gstRate: "" });
+            setFormData({ name: "", departmentId: "", price: "", gstRate: "" });
         }
     }, [service, isOpen]);
 
@@ -101,9 +101,9 @@ function AddServiceModal({ isOpen, onClose, service, specializations, onSuccess 
 
             <FormGroup label={<>Department {required}</>}>
                 <SearchableSelect
-                    value={formData.specializationId}
-                    onChange={(v) => setFormData((p) => ({ ...p, specializationId: v }))}
-                    options={specializations.map((s) => ({ value: s.id, label: s.name }))}
+                    value={formData.departmentId}
+                    onChange={(v) => setFormData((p) => ({ ...p, departmentId: v }))}
+                    options={departments.map((d) => ({ value: d.id, label: d.name }))}
                     placeholder="Select department"
                 />
             </FormGroup>

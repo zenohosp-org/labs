@@ -14,6 +14,7 @@ export {
     patientApi,
     staffApi,
     hospitalServiceApi,
+    departmentApi,
     specializationApi,
     checkupApi,
     billingApi,
