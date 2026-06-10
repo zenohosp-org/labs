@@ -205,6 +205,45 @@ export const checkupApi = {
     },
 };
 
+// ── Lab Reference Ranges (labs-owned) ──────────────────
+// Per-hospital catalogue of normal bands per (testName, sex, age window).
+// Lazy-seeded on the first GET so a fresh hospital sees defaults immediately.
+export const referenceRangeApi = {
+    list: async (hospitalId) => {
+        const { data } = await api.get("/api/reference-ranges", { params: { hospitalId } });
+        return data;
+    },
+    create: async (payload) => {
+        const { data } = await api.post("/api/reference-ranges", payload);
+        return data;
+    },
+    update: async (id, payload) => {
+        const { data } = await api.put(`/api/reference-ranges/${id}`, payload);
+        return data;
+    },
+    delete: async (id) => {
+        await api.delete(`/api/reference-ranges/${id}`);
+    },
+    toggle: async (id) => {
+        const { data } = await api.patch(`/api/reference-ranges/${id}/toggle`);
+        return data;
+    },
+    /** Match a measured value against the catalogue and tag it LOW/NORMAL/HIGH. */
+    match: async ({ testName, sex, ageYears, value }) => {
+        const params = { testName };
+        if (sex) params.sex = sex;
+        if (ageYears != null) params.ageYears = ageYears;
+        if (value != null && value !== "") params.value = value;
+        try {
+            const { data } = await api.get("/api/reference-ranges/match", { params });
+            return data;
+        } catch (e) {
+            if (e?.response?.status === 204) return null;
+            throw e;
+        }
+    },
+};
+
 // ── Admissions ─────────────────────────────────────────
 export const admissionApi = {
     byPatient: async (patientId) => {

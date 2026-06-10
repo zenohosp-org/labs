@@ -34,7 +34,13 @@ export function AuthProvider({ children }) {
             return;
         }
 
-        getMe()
+        // 10s hard timeout — if the backend is unreachable (Render cold start
+        // hung, container dead, CDN black-holed), we land on /login instead
+        // of stalling on the "Loading…" screen forever.
+        const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("auth-timeout")), 10_000)
+        );
+        Promise.race([getMe(), timeout])
             .then((res) => {
                 const userData = res.data?.data || res.data;
                 sessionStorage.setItem("labs_user", JSON.stringify(userData));

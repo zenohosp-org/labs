@@ -31,6 +31,10 @@ const ADMIN_LINKS = [
     { label: "Services", to: "/services", icon: Settings2 },
 ];
 
+const SETTINGS_LINKS = [
+    { label: "Reference Ranges", to: "/settings/reference-ranges", icon: Activity },
+];
+
 const EXTERNAL_APPS = [
     { label: "Hospital (HMS)", href: "https://hms.zenohosp.com", icon: Activity },
     { label: "Finance", href: "https://finance.zenohosp.com", icon: BarChart2 },
@@ -45,8 +49,10 @@ function Sidebar({ isOpen }) {
 
     const radActive = location.pathname.startsWith("/radiology");
     const checkupActive = location.pathname.startsWith("/checkups");
+    const settingsActive = location.pathname.startsWith("/settings");
     const [radOpen, setRadOpen] = useState(() => radActive);
     const [checkupOpen, setCheckupOpen] = useState(() => checkupActive);
+    const [settingsOpen, setSettingsOpen] = useState(() => settingsActive);
 
     const renderLink = (link, indent = false) => {
         const Icon = link.icon;
@@ -136,6 +142,7 @@ function Sidebar({ isOpen }) {
 
                 {isOpen && <div className="hms-sidebar__section-label is-spaced">Admin</div>}
                 {ADMIN_LINKS.map((link) => renderLink(link))}
+                {renderAccordionSection(SETTINGS_LINKS, "Settings", Settings2, settingsOpen, setSettingsOpen, settingsActive)}
             </nav>
 
             <div className="hms-sidebar__footer">

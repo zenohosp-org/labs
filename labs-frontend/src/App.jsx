@@ -11,6 +11,7 @@ import RadiologyReports from "@/pages/radiology/RadiologyReports";
 import RadiologyReportView from "@/pages/radiology/RadiologyReportView";
 import PackageManager from "@/pages/checkups/PackageManager";
 import Services from "@/pages/services/Services";
+import ReferenceRanges from "@/pages/settings/ReferenceRanges";
 
 function App() {
     return (
@@ -46,6 +47,10 @@ function App() {
 
                             {/* Hospital Services (proxied to HMS) */}
                             <Route path="services" element={<Services />} />
+
+                            {/* Settings */}
+                            <Route path="settings" element={<Navigate to="/settings/reference-ranges" replace />} />
+                            <Route path="settings/reference-ranges" element={<ReferenceRanges />} />
                         </Route>
 
                         {/* Fallback */}

@@ -45,6 +45,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/logout").permitAll()
+                // /api/health is an open liveness/diagnostic endpoint — needed
+                // when the container is up but a downstream config is missing
+                // (e.g. HMS_API_URL), so ops can curl it without a JWT.
+                .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll())
 
