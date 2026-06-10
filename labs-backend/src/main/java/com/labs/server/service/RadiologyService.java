@@ -45,6 +45,7 @@ public class RadiologyService {
     private final HospitalRepository hospitalRepository;
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
+    private final com.labs.server.repository.InvoiceRepository invoiceRepository;
 
     @Lazy
     private final RadiologyBillingService billingService;
@@ -178,7 +179,17 @@ public class RadiologyService {
     private RadiologyOrderDTO toDTO(RadiologyOrder o) {
         String patientName = o.getPatient().getFirstName()
                 + (o.getPatient().getLastName() != null ? " " + o.getPatient().getLastName() : "");
-        return RadiologyOrderDTO.builder()
+
+        // Payment surface — derived live from the linked invoice (one extra
+        // SELECT per order, indexed by radiology_order_id). Cheap because the
+        // queue/reports views never load more than a couple of hundred rows
+        // and the JOIN target is an indexed FK. Null when the order has never
+        // been billed (PENDING_SCAN / AWAITING_REPORT pre-report).
+        com.labs.server.entity.Invoice linkedInvoice = invoiceRepository
+                .findByRadiologyOrderId(o.getId())
+                .stream().findFirst().orElse(null);
+
+        RadiologyOrderDTO.RadiologyOrderDTOBuilder b = RadiologyOrderDTO.builder()
                 .id(o.getId())
                 .hospitalId(o.getHospital().getId())
                 .patientId(o.getPatient().getId())
@@ -202,7 +213,14 @@ public class RadiologyService {
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
                 .createdByName(o.getCreatedByName())
-                .createdAt(o.getCreatedAt())
-                .build();
+                .createdAt(o.getCreatedAt());
+
+        if (linkedInvoice != null) {
+            b.invoiceStatus(linkedInvoice.getStatus() != null ? linkedInvoice.getStatus().name() : null)
+             .invoiceNumber(linkedInvoice.getInvoiceNumber())
+             .invoicePaid(linkedInvoice.getPaidAmount())
+             .invoiceTotal(linkedInvoice.getTotal());
+        }
+        return b.build();
     }
 }

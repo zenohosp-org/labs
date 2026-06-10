@@ -205,6 +205,27 @@ export const checkupApi = {
     },
 };
 
+// ── Lab Packages (labs-owned) ──────────────────────────
+// Ad-hoc investigation bundles ("Liver Profile" = SGPT + SGOT + Bilirubin
+// + ALP + Albumin at a flat combo rate). Distinct from health-checkup
+// packages, which are wellness bundles.
+export const labPackageApi = {
+    list: async (hospitalId, activeOnly = false) => {
+        const { data } = await api.get("/api/lab-packages", {
+            params: { hospitalId, activeOnly },
+        });
+        return data;
+    },
+    save: async (hospitalId, payload) => {
+        const { data } = await api.post("/api/lab-packages", payload, {
+            params: { hospitalId },
+        });
+        return data;
+    },
+    toggle: async (id) => api.patch(`/api/lab-packages/${id}/toggle`),
+    delete: async (id) => api.delete(`/api/lab-packages/${id}`),
+};
+
 // ── Lab Reference Ranges (labs-owned) ──────────────────
 // Per-hospital catalogue of normal bands per (testName, sex, age window).
 // Lazy-seeded on the first GET so a fresh hospital sees defaults immediately.

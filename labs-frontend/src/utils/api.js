@@ -16,6 +16,7 @@ export {
     hospitalServiceApi,
     specializationApi,
     checkupApi,
+    labPackageApi,
     referenceRangeApi,
     admissionApi,
 } from "@/api/labsClient";

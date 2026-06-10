@@ -37,4 +37,14 @@ public class RadiologyOrderDTO {
     private String reportId;
     private String createdByName;
     private LocalDateTime createdAt;
+
+    // ── Payment surface (derived via JOIN to invoice_items + invoices) ──
+    // Null while the order has never been billed (PENDING_SCAN / AWAITING_REPORT).
+    // Once auto-bill fires (report generated + price set), these populate from
+    // the linked invoice. Field names match HMS InvoiceStatus character-for-
+    // character so the frontend can colour-code without a second lookup.
+    private String invoiceStatus;
+    private String invoiceNumber;
+    private BigDecimal invoicePaid;
+    private BigDecimal invoiceTotal;
 }

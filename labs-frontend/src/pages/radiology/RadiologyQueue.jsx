@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import NewOrderModal from "./NewOrderModal";
 import WriteReportModal from "./WriteReportModal";
+import { paymentChipFor, formatPaymentSummary } from "@/utils/paymentBadge";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -259,7 +260,7 @@ function QueueSection({
             ) : (
                 <div className="hms-rad-section__list">
                     <div className="hms-rad-table-head">
-                        {["Patient", "Investigation", "Technician", "Priority", "Scheduled", ""].map((h) => (
+                        {["Patient", "Investigation", "Technician", "Priority", "Payment", "Scheduled", ""].map((h) => (
                             <p key={h} className="hms-rad-table-head__cell">{h}</p>
                         ))}
                     </div>
@@ -299,6 +300,20 @@ function QueueSection({
                                         <PIcon className="w-2 h-2" />
                                         {order.priority}
                                     </span>
+                                </div>
+                                <div>
+                                    {(() => {
+                                        const chip = paymentChipFor(order);
+                                        const summary = formatPaymentSummary(order);
+                                        return (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className={`hms-rad-chip ${chip.cls}`}>{chip.label}</span>
+                                                {summary && (
+                                                    <span className="text-12 text-gray-500">{summary}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>

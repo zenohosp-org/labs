@@ -27,6 +27,10 @@ const CHECKUP_LINKS = [
     { label: "Packages", to: "/checkups/packages", icon: HeartPulse },
 ];
 
+const PACKAGE_LINKS = [
+    { label: "Lab Packages", to: "/packages/lab", icon: FlaskConical },
+];
+
 const ADMIN_LINKS = [
     { label: "Services", to: "/services", icon: Settings2 },
 ];
@@ -49,9 +53,11 @@ function Sidebar({ isOpen }) {
 
     const radActive = location.pathname.startsWith("/radiology");
     const checkupActive = location.pathname.startsWith("/checkups");
+    const packagesActive = location.pathname.startsWith("/packages");
     const settingsActive = location.pathname.startsWith("/settings");
     const [radOpen, setRadOpen] = useState(() => radActive);
     const [checkupOpen, setCheckupOpen] = useState(() => checkupActive);
+    const [packagesOpen, setPackagesOpen] = useState(() => packagesActive);
     const [settingsOpen, setSettingsOpen] = useState(() => settingsActive);
 
     const renderLink = (link, indent = false) => {
@@ -139,6 +145,7 @@ function Sidebar({ isOpen }) {
                 {isOpen && <div className="hms-sidebar__section-label is-spaced">Diagnostics</div>}
                 {renderAccordionSection(RADIOLOGY_LINKS, "Radiology", ScanLine, radOpen, setRadOpen, radActive)}
                 {renderAccordionSection(CHECKUP_LINKS, "Health Checkups", HeartPulse, checkupOpen, setCheckupOpen, checkupActive)}
+                {renderAccordionSection(PACKAGE_LINKS, "Packages", FlaskConical, packagesOpen, setPackagesOpen, packagesActive)}
 
                 {isOpen && <div className="hms-sidebar__section-label is-spaced">Admin</div>}
                 {ADMIN_LINKS.map((link) => renderLink(link))}

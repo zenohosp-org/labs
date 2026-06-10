@@ -32,4 +32,16 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
      * own {@code invoice_id} field is authoritative).
      */
     boolean existsByIdAndAdmission_Id(UUID id, UUID admissionId);
+
+    /**
+     * Returns invoices that carry a given radiology line item. Used by the
+     * queue/reports DTO to surface live payment status without a frontend
+     * round-trip. Order is most-recent-first so a one-row pick is safe.
+     */
+    @Query("""
+        SELECT DISTINCT inv FROM Invoice inv JOIN inv.items ii
+        WHERE ii.radiologyOrderId = :radiologyOrderId
+        ORDER BY inv.createdAt DESC
+        """)
+    List<Invoice> findByRadiologyOrderId(@Param("radiologyOrderId") Long radiologyOrderId);
 }

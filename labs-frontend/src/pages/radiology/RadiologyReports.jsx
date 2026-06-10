@@ -7,6 +7,7 @@ import { fmtId } from "@/utils/idFormat";
 import Pagination from "@/components/ui/Pagination";
 import { FileText, Search, Loader2, CheckCircle2, User, Clock, ExternalLink } from "lucide-react";
 import { fmtDateTime } from "@/utils/date";
+import { paymentChipFor, formatPaymentSummary } from "@/utils/paymentBadge";
 
 const PAGE_SIZE = 30;
 const PRIORITY_CLS = {
@@ -107,7 +108,7 @@ function RadiologyReports() {
                 ) : (
                     <>
                         <div className="hms-rad-table-head is-reports">
-                            {["Patient", "Investigation", "Referred By", "Completed", "Priority", "Action"].map((h) => (
+                            {["Patient", "Investigation", "Referred By", "Completed", "Priority", "Payment", "Action"].map((h) => (
                                 <p key={h} className="hms-rad-table-head__cell">{h}</p>
                             ))}
                         </div>
@@ -138,6 +139,20 @@ function RadiologyReports() {
                                         <span className={`hms-rad-priority ${PRIORITY_CLS[order.priority]}`}>
                                             {order.priority}
                                         </span>
+                                    </div>
+                                    <div>
+                                        {(() => {
+                                            const chip = paymentChipFor(order);
+                                            const summary = formatPaymentSummary(order);
+                                            return (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className={`hms-rad-chip ${chip.cls}`}>{chip.label}</span>
+                                                    {summary && (
+                                                        <span className="text-12 text-gray-500">{summary}</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <div>
                                         <button

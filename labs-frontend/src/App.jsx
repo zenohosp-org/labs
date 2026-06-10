@@ -12,6 +12,7 @@ import RadiologyReportView from "@/pages/radiology/RadiologyReportView";
 import PackageManager from "@/pages/checkups/PackageManager";
 import Services from "@/pages/services/Services";
 import ReferenceRanges from "@/pages/settings/ReferenceRanges";
+import LabPackages from "@/pages/packages/LabPackages";
 
 function App() {
     return (
@@ -44,6 +45,10 @@ function App() {
                             {/* Health Checkups */}
                             <Route path="checkups" element={<Navigate to="/checkups/packages" replace />} />
                             <Route path="checkups/packages" element={<PackageManager />} />
+
+                            {/* Lab Packages */}
+                            <Route path="packages" element={<Navigate to="/packages/lab" replace />} />
+                            <Route path="packages/lab" element={<LabPackages />} />
 
                             {/* Hospital Services (proxied to HMS) */}
                             <Route path="services" element={<Services />} />
