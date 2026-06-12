@@ -14,6 +14,8 @@ import Services from "@/pages/services/Services";
 import ReferenceRanges from "@/pages/settings/ReferenceRanges";
 import LabPackages from "@/pages/packages/LabPackages";
 import LabReportView from "@/pages/labs/LabReportView";
+import LabQueue from "@/pages/labs/LabQueue";
+import LabReports from "@/pages/labs/LabReports";
 
 function App() {
     return (
@@ -36,7 +38,13 @@ function App() {
                             <Route index element={<Navigate to="/labs/dashboard" replace />} />
                             <Route path="labs" element={<Navigate to="/labs/dashboard" replace />} />
                             <Route path="labs/dashboard" element={<Dashboard />} />
-                            {/* HMS Consultation View + IPD Labs tab deep-link into this. */}
+
+                            {/* Pathology — order-listing + reports view used by lab bench staff.
+                                /lab/reports/:id is also deep-linked from HMS Consultation View
+                                + IPD Labs tab. */}
+                            <Route path="lab" element={<Navigate to="/lab/queue" replace />} />
+                            <Route path="lab/queue" element={<LabQueue />} />
+                            <Route path="lab/reports" element={<LabReports />} />
                             <Route path="lab/reports/:id" element={<LabReportView />} />
 
                             {/* Radiology */}

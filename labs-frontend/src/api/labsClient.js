@@ -63,9 +63,8 @@ export const radiologyApi = {
     },
 };
 
-// Lab-orders endpoints kept for backward compat with the in-flight specimen
-// workflow that originally seeded labs. The new radiology flow above is what
-// the UI uses now; this will be wound down once migration completes.
+// Pathology / lab-orders endpoints. Mirrors radiologyApi shape so the queue
+// page can be built from the same primitives.
 export const labApi = {
     list: async (hospitalId, status) => {
         const params = { hospitalId };
@@ -81,9 +80,24 @@ export const labApi = {
         const { data } = await api.get(`/api/lab/patient/${patientId}`);
         return data;
     },
+    getByAdmission: async (admissionId) => {
+        const { data } = await api.get(`/api/lab/admission/${admissionId}`);
+        return data;
+    },
     getStats: async (hospitalId) => {
         const { data } = await api.get("/api/lab/stats", { params: { hospitalId } });
         return data;
+    },
+    markCollected: async (id) => {
+        const { data } = await api.patch(`/api/lab/${id}/collect`);
+        return data;
+    },
+    generateReport: async (id, findings, observation) => {
+        const { data } = await api.patch(`/api/lab/${id}/report`, { findings, observation });
+        return data;
+    },
+    cancel: async (id) => {
+        await api.delete(`/api/lab/${id}`);
     },
 };
 

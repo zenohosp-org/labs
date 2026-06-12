@@ -14,9 +14,15 @@ import {
     BarChart2,
     Boxes,
     LayoutGrid,
+    TestTube,
 } from "lucide-react";
 
 const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home };
+
+const PATHOLOGY_LINKS = [
+    { label: "Lab Queue", to: "/lab/queue", icon: TestTube },
+    { label: "Reports", to: "/lab/reports", icon: FileText },
+];
 
 const RADIOLOGY_LINKS = [
     { label: "Imaging Queue", to: "/radiology/queue", icon: ScanLine },
@@ -51,10 +57,12 @@ function Sidebar({ isOpen }) {
     const { user } = useAuth();
     const location = useLocation();
 
+    const pathActive = location.pathname.startsWith("/lab/");
     const radActive = location.pathname.startsWith("/radiology");
     const checkupActive = location.pathname.startsWith("/checkups");
     const packagesActive = location.pathname.startsWith("/packages");
     const settingsActive = location.pathname.startsWith("/settings");
+    const [pathOpen, setPathOpen] = useState(() => pathActive);
     const [radOpen, setRadOpen] = useState(() => radActive);
     const [checkupOpen, setCheckupOpen] = useState(() => checkupActive);
     const [packagesOpen, setPackagesOpen] = useState(() => packagesActive);
@@ -143,6 +151,7 @@ function Sidebar({ isOpen }) {
                 {renderLink(DASHBOARD_LINK)}
 
                 {isOpen && <div className="hms-sidebar__section-label is-spaced">Diagnostics</div>}
+                {renderAccordionSection(PATHOLOGY_LINKS, "Pathology", TestTube, pathOpen, setPathOpen, pathActive)}
                 {renderAccordionSection(RADIOLOGY_LINKS, "Radiology", ScanLine, radOpen, setRadOpen, radActive)}
                 {renderAccordionSection(CHECKUP_LINKS, "Health Checkups", HeartPulse, checkupOpen, setCheckupOpen, checkupActive)}
                 {renderAccordionSection(PACKAGE_LINKS, "Packages", FlaskConical, packagesOpen, setPackagesOpen, packagesActive)}
