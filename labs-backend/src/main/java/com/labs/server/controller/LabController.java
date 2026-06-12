@@ -76,6 +76,17 @@ public class LabController {
         return ResponseEntity.ok(labService.generateReport(id, request));
     }
 
+    /**
+     * Cancel a lab order. Mirrors HMS's existing IPD lab-orders cancel
+     * semantics — only allowed before the sample is collected. Once the
+     * sample is in the analyser the order is locked.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancel(@PathVariable Long id) {
+        labService.cancel(id);
+        return ResponseEntity.noContent().build();
+    }
+
     private String resolveFullName(Authentication auth) {
         if (auth == null || auth.getCredentials() == null) return "System";
         try {

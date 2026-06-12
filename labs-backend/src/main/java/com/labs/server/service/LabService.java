@@ -134,6 +134,21 @@ public class LabService {
         return toDTO(orderRepository.save(order));
     }
 
+    /**
+     * Cancel a lab order. Only allowed in PENDING_COLLECTION state — once
+     * the sample is in the analyser the workflow is locked. Mirrors HMS's
+     * existing IPD lab-orders semantics ("Only PENDING orders can be cancelled").
+     */
+    @Transactional
+    public void cancel(Long id) {
+        LabOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != LabStatus.PENDING_COLLECTION) {
+            throw new RuntimeException("Only PENDING_COLLECTION orders can be cancelled");
+        }
+        orderRepository.delete(order);
+    }
+
     @Transactional
     public LabOrderDTO markCollected(Long id) {
         LabOrder order = orderRepository.findById(id)

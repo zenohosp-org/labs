@@ -59,4 +59,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         """)
     List<Object[]> findInvoicesForRadiologyOrders(
             @Param("radiologyOrderIds") java.util.Collection<Long> radiologyOrderIds);
+
+    /** Lab counterpart of {@link #findInvoicesForRadiologyOrders}. */
+    @Query("""
+        SELECT ii.labOrderId, inv
+        FROM Invoice inv JOIN inv.items ii
+        WHERE ii.labOrderId IN :labOrderIds
+        ORDER BY inv.createdAt DESC
+        """)
+    List<Object[]> findInvoicesForLabOrders(
+            @Param("labOrderIds") java.util.Collection<Long> labOrderIds);
 }

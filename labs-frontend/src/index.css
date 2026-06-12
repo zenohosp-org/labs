@@ -1,13 +1,15 @@
 /* -------------------------------------------------------------------
-   HMS design system — Layered import chain
+   ZenoHosp design system — Layered import chain
    -------------------------------------------------------------------
    Cascade order (later wins on equal specificity):
+     0. styles/ui/         — ZU shared layer (zu-* tokens + shell, mirrors HMS)
      1. base.css           — :root design tokens, font import
      2. hms-system.css     — component primitives + reusable patterns
      3. utilities.css      — atomic helpers (.flex, .gap-3, …)
      4. modules/*.css      — page-area-specific compositions
      5. legacy block below — original .btn-primary / .card / .input etc.
    ------------------------------------------------------------------- */
+@import './styles/ui/index.css'; /* NEW SHARED UI LAYER — keeps the labs shell visually identical to HMS */
 @import './styles/base.css';
 @import './styles/hms-system.css';
 @import './styles/utilities.css';

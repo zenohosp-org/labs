@@ -13,6 +13,7 @@ import PackageManager from "@/pages/checkups/PackageManager";
 import Services from "@/pages/services/Services";
 import ReferenceRanges from "@/pages/settings/ReferenceRanges";
 import LabPackages from "@/pages/packages/LabPackages";
+import LabReportView from "@/pages/labs/LabReportView";
 
 function App() {
     return (
@@ -35,6 +36,8 @@ function App() {
                             <Route index element={<Navigate to="/labs/dashboard" replace />} />
                             <Route path="labs" element={<Navigate to="/labs/dashboard" replace />} />
                             <Route path="labs/dashboard" element={<Dashboard />} />
+                            {/* HMS Consultation View + IPD Labs tab deep-link into this. */}
+                            <Route path="lab/reports/:id" element={<LabReportView />} />
 
                             {/* Radiology */}
                             <Route path="radiology" element={<Navigate to="/radiology/queue" replace />} />
