@@ -80,7 +80,7 @@ public class LabBillingService {
             if (invoice.getItems() == null) invoice.setItems(new ArrayList<>());
             invoice.getItems().add(InvoiceItem.builder()
                     .invoice(invoice)
-                    .itemType("LAB")
+                    .itemType("LAB_TEST")
                     .labOrderId(order.getId())
                     .description(description)
                     .quantity(1)
@@ -121,7 +121,7 @@ public class LabBillingService {
                     .build();
             invoice.setItems(new ArrayList<>(List.of(InvoiceItem.builder()
                     .invoice(invoice)
-                    .itemType("LAB")
+                    .itemType("LAB_TEST")
                     .labOrderId(order.getId())
                     .description(description)
                     .quantity(1)
