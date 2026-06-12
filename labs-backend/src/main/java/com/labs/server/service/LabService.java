@@ -128,6 +128,7 @@ public class LabService {
                 .scheduledDate(req.getScheduledDate())
                 .sampleType(req.getSampleType())
                 .price(req.getPrice())
+                .gstRate(req.getGstRate())
                 .createdByName(createdByName)
                 .build();
 
@@ -218,6 +219,7 @@ public class LabService {
                 .billNo(o.getBillNo())
                 .sampleType(o.getSampleType())
                 .price(o.getPrice())
+                .gstRate(o.getGstRate())
                 .collectedAt(o.getCollectedAt())
                 .reportedAt(o.getReportedAt())
                 .findings(o.getFindings())

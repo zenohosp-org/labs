@@ -30,6 +30,7 @@ public class LabOrderDTO {
     private String billNo;
     private String sampleType;
     private BigDecimal price;
+    private BigDecimal gstRate;
     private LocalDateTime collectedAt;
     private LocalDateTime reportedAt;
     private String findings;

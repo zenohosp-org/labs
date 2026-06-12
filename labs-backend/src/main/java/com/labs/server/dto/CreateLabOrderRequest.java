@@ -22,4 +22,6 @@ public class CreateLabOrderRequest {
     private LocalDate scheduledDate;
     private String billNo;
     private BigDecimal price;
+    /** GST % from the HospitalServices catalog. e.g. 18 for 18%. */
+    private BigDecimal gstRate;
 }

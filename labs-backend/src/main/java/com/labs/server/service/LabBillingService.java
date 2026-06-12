@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +64,8 @@ public class LabBillingService {
         String description = "Lab — " + order.getServiceName()
                 + (order.getReportId() != null ? " (Report " + order.getReportId() + ")" : "");
 
+        BigDecimal lineGst = computeLineGst(order.getPrice(), order.getGstRate());
+
         if (isIpd) {
             UUID admissionId = order.getAdmission().getId();
             Invoice invoice = invoiceRepository.findAllByAdmission_IdOrderByCreatedAtDesc(admissionId)
@@ -88,9 +91,12 @@ public class LabBillingService {
             BigDecimal subtotal = invoice.getItems().stream()
                     .map(it -> it.getTotalPrice() != null ? it.getTotalPrice() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal tax = invoice.getTax() != null ? invoice.getTax() : BigDecimal.ZERO;
+            // Aggregate tax += this line's GST. Existing invoice.tax already
+            // accounts for prior lines' GST, so we only add the new contribution.
+            BigDecimal tax = (invoice.getTax() != null ? invoice.getTax() : BigDecimal.ZERO).add(lineGst);
             BigDecimal discount = invoice.getDiscount() != null ? invoice.getDiscount() : BigDecimal.ZERO;
             invoice.setSubtotal(subtotal);
+            invoice.setTax(tax);
             invoice.setTotal(subtotal.add(tax).subtract(discount));
 
             if (InvoiceStatus.PAID.equals(invoice.getStatus())
@@ -107,9 +113,9 @@ public class LabBillingService {
                     .hospital(order.getHospital())
                     .patient(order.getPatient())
                     .subtotal(order.getPrice())
-                    .tax(BigDecimal.ZERO)
+                    .tax(lineGst)
                     .discount(BigDecimal.ZERO)
-                    .total(order.getPrice())
+                    .total(order.getPrice().add(lineGst))
                     .status(InvoiceStatus.UNPAID)
                     .notes("Lab walk-in — " + order.getServiceName())
                     .build();
@@ -127,5 +133,16 @@ public class LabBillingService {
 
         order.setStatus(LabStatus.BILLED);
         labOrderRepository.save(order);
+    }
+
+    /**
+     * price * gstRate / 100 at 2-decimal precision (HALF_UP) — matches the
+     * Invoice.tax column scale. Null or non-positive inputs yield ZERO so
+     * pre-catalog orders and tax-free tests bill at exactly their base price.
+     */
+    private static BigDecimal computeLineGst(BigDecimal price, BigDecimal rate) {
+        if (price == null || rate == null) return BigDecimal.ZERO;
+        if (rate.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        return price.multiply(rate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 }

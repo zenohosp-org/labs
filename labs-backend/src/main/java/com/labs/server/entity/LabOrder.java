@@ -79,6 +79,15 @@ public class LabOrder {
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;
 
+    /**
+     * GST percentage captured at order time from the HospitalServices catalog
+     * (e.g. {@code 18} for 18%). Drives the per-line GST split when
+     * {@link com.labs.server.service.LabBillingService} auto-bills the order.
+     * Null / zero means tax-free or pre-catalog rows — billing treats as 0%.
+     */
+    @Column(name = "gst_rate", precision = 5, scale = 2)
+    private BigDecimal gstRate;
+
     @Column(name = "collected_at")
     private LocalDateTime collectedAt;
 
