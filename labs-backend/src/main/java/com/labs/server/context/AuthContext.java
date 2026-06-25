@@ -25,4 +25,16 @@ public class AuthContext {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? (String) auth.getPrincipal() : null;
     }
+
+    public String getEmail() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getCredentials() == null) return null;
+        return jwtUtil.getEmail((String) auth.getCredentials());
+    }
+
+    public String getRole() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getCredentials() == null) return null;
+        return jwtUtil.getRole((String) auth.getCredentials());
+    }
 }
