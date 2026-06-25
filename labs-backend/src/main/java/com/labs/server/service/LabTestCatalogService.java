@@ -28,12 +28,15 @@ import java.util.stream.Collectors;
 public class LabTestCatalogService {
 
     private final LabTestCatalogRepository repository;
-    private final LabTestCatalogSeed seedDefaults;
+    private final LabTestCatalogSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
     private final AuditService auditService;
 
     public List<LabTestCatalogDTO> list(UUID hospitalId, boolean activeOnly) {
         if (repository.countByHospitalId(hospitalId) == 0) {
-            seedFor(hospitalId);
+            // Goes through the Spring AOP proxy because seeder is a DIFFERENT
+            // bean — so seeder.seedFor's @Transactional(REQUIRES_NEW) actually
+            // opens a writable transaction and the inserts flush.
+            seeder.seedFor(hospitalId);
         }
         List<LabTestCatalog> rows = activeOnly
                 ? repository.findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId)
@@ -92,13 +95,6 @@ public class LabTestCatalogService {
         repository.delete(row);
         auditService.record("LabTestCatalog", String.valueOf(id), "DELETE",
                 hospitalId, row, null);
-    }
-
-    @Transactional
-    void seedFor(UUID hospitalId) {
-        List<LabTestCatalog> defaults = seedDefaults.defaults(hospitalId);
-        log.info("Seeding {} default lab test catalogue rows for hospital {}", defaults.size(), hospitalId);
-        repository.saveAll(defaults);
     }
 
     private LabTestCatalog loadForTenant(UUID hospitalId, Long id) {

@@ -22,7 +22,7 @@ import java.util.UUID;
 public class LabReferenceRangeService {
 
     private final LabReferenceRangeRepository repository;
-    private final LabReferenceRangeSeed seedDefaults;
+    private final LabReferenceRangeSeeder seeder;   // separate bean — see seeder javadoc for the readOnly-tx rationale
 
     /**
      * Returns the catalogue for a hospital. Lazy-seeds the defaults the first
@@ -31,7 +31,7 @@ public class LabReferenceRangeService {
      */
     public List<LabReferenceRange> list(UUID hospitalId) {
         if (repository.countByHospitalId(hospitalId) == 0) {
-            seedFor(hospitalId);
+            seeder.seedFor(hospitalId);
         }
         return repository.findByHospitalIdOrderByTestNameAscMinAgeYearsAsc(hospitalId);
     }
@@ -178,24 +178,4 @@ public class LabReferenceRangeService {
         return row;
     }
 
-    @Transactional
-    void seedFor(UUID hospitalId) {
-        log.info("Seeding {} default lab reference ranges for hospital {}",
-                seedDefaults.defaults().size(), hospitalId);
-        for (LabReferenceRangeSeed.Default d : seedDefaults.defaults()) {
-            repository.save(LabReferenceRange.builder()
-                    .hospitalId(hospitalId)
-                    .testName(d.testName())
-                    .category(d.category())
-                    .sex(d.sex())
-                    .minAgeYears(d.minAge())
-                    .maxAgeYears(d.maxAge())
-                    .minValue(d.minValue())
-                    .maxValue(d.maxValue())
-                    .unit(d.unit())
-                    .rangeText(d.rangeText())
-                    .isActive(true)
-                    .build());
-        }
-    }
 }
