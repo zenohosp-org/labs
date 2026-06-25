@@ -26,3 +26,6 @@ labs-frontend/.env.*.local
 
 # ─── Claude harness (local-only) ───
 .claude/
+
+# ─── Cross-repo prompt scratchpads (not part of labs) ───
+HMS_PROMPT*.md

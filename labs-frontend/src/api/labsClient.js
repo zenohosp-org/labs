@@ -8,11 +8,26 @@ const api = axios.create({
     headers: { "Content-Type": "application/json" },
 });
 
+// Local-dev SSO bypass: when VITE_DEV_MOCK_AUTH=true the .env.local file
+// supplies a real JWT (signed with the shared jwt.secret). The backend
+// JwtFilter accepts the Bearer header so no backend mock endpoint is needed.
+// Same pattern as HMS [HMS-frontend/src/utils/api.js:40] and pharmacy.
+const isMockAuth =
+    import.meta.env.VITE_DEV_MOCK_AUTH === "true" && import.meta.env.VITE_MOCK_JWT;
+if (isMockAuth) {
+    api.interceptors.request.use((config) => {
+        config.headers.Authorization = `Bearer ${import.meta.env.VITE_MOCK_JWT}`;
+        return config;
+    });
+}
+
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            if (!error.config?.url?.includes("/api/user/me")) {
+            // In local mock-auth dev, never bounce to /login on a stray 401 —
+            // it would clobber the mock session.
+            if (!isMockAuth && !error.config?.url?.includes("/api/user/me")) {
                 window.location.href = "/login";
             }
         }
