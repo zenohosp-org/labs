@@ -14,10 +14,12 @@ import {
     AlertTriangle,
     Zap,
     Droplet,
+    Beaker,
 } from "lucide-react";
 import LabWriteReportModal from "./LabWriteReportModal";
 import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
+import SpecimensModal from "@/components/modals/SpecimensModal";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -45,6 +47,7 @@ function LabQueue() {
     const [writeReport, setWriteReport] = useState(null);
     const [collectPayment, setCollectPayment] = useState(null);
     const [markingCollected, setMarkingCollected] = useState(null);
+    const [specimensFor, setSpecimensFor] = useState(null);
 
     const load = useCallback(async () => {
         if (!user?.hospitalId) return;
@@ -193,6 +196,7 @@ function LabQueue() {
                         onAction={handleMarkCollected}
                         loadingId={markingCollected}
                         onCollect={(o) => setCollectPayment(o)}
+                        onSpecimens={(o) => setSpecimensFor(o)}
                         showCollectAction
                     />
                     <QueueSection
@@ -207,6 +211,7 @@ function LabQueue() {
                         onAction={(o) => setWriteReport(o)}
                         loadingId={null}
                         onCollect={(o) => setCollectPayment(o)}
+                        onSpecimens={(o) => setSpecimensFor(o)}
                     />
                 </>
             )}
@@ -231,6 +236,13 @@ function LabQueue() {
                     }}
                 />
             )}
+            {specimensFor && (
+                <SpecimensModal
+                    order={specimensFor}
+                    onClose={() => setSpecimensFor(null)}
+                    onChanged={load}
+                />
+            )}
         </div>
     );
 }
@@ -247,6 +259,7 @@ function QueueSection({
     onAction,
     loadingId,
     onCollect,
+    onSpecimens,
     showCollectAction,
 }) {
     return (
@@ -278,6 +291,11 @@ function QueueSection({
                                     <div>
                                         <p className="hms-rad-patient__name">{order.patientName}</p>
                                         <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                        {order.accessionNumber && (
+                                            <p className="hms-rad-patient__uhid" title="Lab-wide accession (Phase 1)">
+                                                ACC: <code>{order.accessionNumber}</code>
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <div>
@@ -311,7 +329,16 @@ function QueueSection({
                                 <div>
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
                                 </div>
-                                <div className="hms-rad-row__action">
+                                <div className="hms-rad-row__action" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                    {onSpecimens && (
+                                        <button
+                                            onClick={() => onSpecimens(order)}
+                                            className="hms-rad-row__view-btn"
+                                            title="Specimens (Phase 1)"
+                                        >
+                                            <Beaker className="w-3 h-3" /> Specimens
+                                        </button>
+                                    )}
                                     {showCollectAction ? (
                                         <button
                                             onClick={() => onAction(order)}

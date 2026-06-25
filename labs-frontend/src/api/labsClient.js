@@ -338,4 +338,129 @@ export const admissionApi = {
     },
 };
 
+// ── Specimens (Phase 1 — per-container chain of custody) ───────────────
+// One LabOrder can have many specimens (CBC + LFT + Lipid from one draw =
+// 3 tubes). Each specimen flows collected → received → accessioned, or
+// gets terminated by reject(reasonCode). Backend auto-creates a default
+// specimen on the legacy /collect path when nothing is posted explicitly,
+// so this API is additive for new UIs that want explicit barcode entry.
+export const specimenApi = {
+    listForOrder: async (labOrderId) => {
+        const { data } = await api.get(`/api/lab/${labOrderId}/specimens`);
+        return data;
+    },
+    create: async (labOrderId, payload) => {
+        const { data } = await api.post(`/api/lab/${labOrderId}/specimens`, payload);
+        return data;
+    },
+    get: async (id) => {
+        const { data } = await api.get(`/api/specimens/${id}`);
+        return data;
+    },
+    receive: async (id, payload = {}) => {
+        const { data } = await api.patch(`/api/specimens/${id}/receive`, payload);
+        return data;
+    },
+    accession: async (id, accessionedByUserId) => {
+        const params = accessionedByUserId ? { accessionedByUserId } : {};
+        const { data } = await api.patch(`/api/specimens/${id}/accession`, null, { params });
+        return data;
+    },
+    reject: async (id, payload) => {
+        const { data } = await api.patch(`/api/specimens/${id}/reject`, payload);
+        return data;
+    },
+};
+
+// ── Rejection reasons (Phase 1 — controlled vocab seeded by V4) ────────
+export const rejectionReasonApi = {
+    list: async (activeOnly = true) => {
+        const { data } = await api.get("/api/lab-rejection-reasons", { params: { activeOnly } });
+        return data;
+    },
+};
+
+// ── Test catalog (Phase 2 — per-hospital LOINC-coded test list) ────────
+// Lazy-seeded on first GET with ~47 Indian-lab analytes across 7 panels.
+export const testCatalogApi = {
+    list: async (hospitalId, activeOnly = true) => {
+        const { data } = await api.get("/api/lab-test-catalog", {
+            params: { hospitalId, activeOnly },
+        });
+        return data;
+    },
+    expandPanel: async (panelCode, hospitalId) => {
+        const { data } = await api.get(`/api/lab-test-catalog/panel/${panelCode}`, {
+            params: { hospitalId },
+        });
+        return data;
+    },
+    upsert: async (payload) => {
+        const { data } = await api.post("/api/lab-test-catalog", payload);
+        return data;
+    },
+    toggle: async (id) => {
+        const { data } = await api.patch(`/api/lab-test-catalog/${id}/toggle`);
+        return data;
+    },
+    delete: async (id) => {
+        await api.delete(`/api/lab-test-catalog/${id}`);
+    },
+};
+
+// ── Per-analyte results (Phase 2 — replaces findings blob) ─────────────
+// Coexists with labApi.generateReport — both can be used; viewers prefer
+// structured per-analyte rows when present and fall back to the blob.
+export const resultApi = {
+    listForOrder: async (labOrderId) => {
+        const { data } = await api.get(`/api/lab/${labOrderId}/results`);
+        return data;
+    },
+    create: async (labOrderId, payload) => {
+        const { data } = await api.post(`/api/lab/${labOrderId}/results`, payload);
+        return data;
+    },
+    createBulk: async (labOrderId, results) => {
+        const { data } = await api.post(`/api/lab/${labOrderId}/results/bulk`, { results });
+        return data;
+    },
+    get: async (id) => {
+        const { data } = await api.get(`/api/results/${id}`);
+        return data;
+    },
+    verify: async (id, payload = {}) => {
+        const { data } = await api.patch(`/api/results/${id}/verify`, payload);
+        return data;
+    },
+    authorise: async (id, payload = {}) => {
+        const { data } = await api.patch(`/api/results/${id}/authorise`, payload);
+        return data;
+    },
+    amend: async (id, payload) => {
+        const { data } = await api.post(`/api/results/${id}/amend`, payload);
+        return data;
+    },
+    cancel: async (id, reason) => {
+        const { data } = await api.patch(`/api/results/${id}/cancel`, { reason });
+        return data;
+    },
+    panicCall: async (id, payload) => {
+        const { data } = await api.patch(`/api/results/${id}/panic-call`, payload);
+        return data;
+    },
+};
+
+// ── Audit trail (Phase 0 — read-only viewer) ───────────────────────────
+export const auditApi = {
+    list: async ({ entityType, entityId, from, to, page = 0, size = 50 } = {}) => {
+        const params = { page, size };
+        if (entityType) params.entityType = entityType;
+        if (entityId)   params.entityId   = entityId;
+        if (from)       params.from       = from;
+        if (to)         params.to         = to;
+        const { data } = await api.get("/api/audit-log", { params });
+        return data;
+    },
+};
+
 export default api;
