@@ -31,10 +31,13 @@ public interface LabReferenceRangeRepository extends JpaRepository<LabReferenceR
           AND (r.sex = :sex OR r.sex = 'ANY')
           AND (r.minAgeYears IS NULL OR r.minAgeYears <= :ageYears)
           AND (r.maxAgeYears IS NULL OR r.maxAgeYears >= :ageYears)
+          AND (r.effectiveTo IS NULL OR r.effectiveTo >= CURRENT_DATE)
+          AND (r.specialState IS NULL OR r.specialState = :specialState)
         """)
     List<LabReferenceRange> findCandidates(
             @Param("hospitalId") UUID hospitalId,
             @Param("testName") String testName,
             @Param("sex") String sex,
-            @Param("ageYears") int ageYears);
+            @Param("ageYears") int ageYears,
+            @Param("specialState") String specialState);
 }

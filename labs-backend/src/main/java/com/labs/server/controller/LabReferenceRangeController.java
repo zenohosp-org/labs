@@ -74,9 +74,10 @@ public class LabReferenceRangeController {
             @RequestParam(required = false, defaultValue = "ANY") String sex,
             @RequestParam(required = false, defaultValue = "30") Integer ageYears,
             @RequestParam(required = false) BigDecimal value,
+            @RequestParam(required = false) String specialState,
             Authentication auth) {
         UUID hid = resolveHospitalId(auth, null);
-        return service.match(hid, testName, sex, ageYears != null ? ageYears : 30, value)
+        return service.match(hid, testName, sex, ageYears != null ? ageYears : 30, value, specialState)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

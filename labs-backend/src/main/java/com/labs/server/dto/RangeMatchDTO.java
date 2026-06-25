@@ -24,6 +24,17 @@ public class RangeMatchDTO {
     private BigDecimal maxValue;
     private String unit;
     private String rangeText;
-    /** LOW | NORMAL | HIGH | null (no numeric bounds to compare against) */
+    /** LOW | NORMAL | HIGH | null (no numeric bounds to compare against). Kept for backward compat. */
     private String flag;
+
+    // ── Phase 2 additions ─────────────────────────────────────────────
+    /** HL7 OBX-8: N | L | H | LL | HH | null. */
+    private String abnormalFlag;
+    /** TRUE when the value crossed criticalLow/criticalHigh. Drives panic-call workflow. */
+    private Boolean panic;
+    private BigDecimal criticalLow;
+    private BigDecimal criticalHigh;
+    private String specialState;
+    private String loincCode;
+    private String method;
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -74,6 +75,38 @@ public class LabReferenceRange {
 
     @Column(name = "range_text", length = 100, nullable = false)
     private String rangeText;
+
+    // ── Phase 2 additions (V8 migration) — all nullable so existing rows keep
+    // matching unchanged. Match algorithm in LabReferenceRangeService prefers
+    // the most-specific row (special_state + critical limits when set).
+
+    /** Values strictly below this trigger HL7 LL (panic-low). */
+    @Column(name = "critical_low", precision = 12, scale = 4)
+    private BigDecimal criticalLow;
+
+    /** Values strictly above this trigger HL7 HH (panic-high). */
+    @Column(name = "critical_high", precision = 12, scale = 4)
+    private BigDecimal criticalHigh;
+
+    /** PREGNANT | NEONATE | FASTING | POSTPRANDIAL — null = baseline. */
+    @Column(name = "special_state", length = 30)
+    private String specialState;
+
+    @Column(name = "loinc_code", length = 20)
+    private String loincCode;
+
+    @Column(name = "method", length = 80)
+    private String method;
+
+    @Column(name = "effective_from")
+    private LocalDate effectiveFrom;
+
+    /** null = currently in force; set when this band is superseded. */
+    @Column(name = "effective_to")
+    private LocalDate effectiveTo;
+
+    @Column(name = "source_citation", length = 300)
+    private String sourceCitation;
 
     @Builder.Default
     @Column(name = "is_active")
