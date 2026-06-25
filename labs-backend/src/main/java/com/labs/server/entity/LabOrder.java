@@ -103,6 +103,15 @@ public class LabOrder {
     @Column(name = "report_id", length = 20)
     private String reportId;
 
+    /**
+     * Phase 1 — lab-wide accession number printed on requisitions and specimen
+     * barcodes. Nullable on legacy rows; LabService backfills on the next
+     * lifecycle event (createOrder / markCollected) for any order that lacks
+     * one. Uniqueness enforced via a partial unique index in V5.
+     */
+    @Column(name = "accession_number", length = 40)
+    private String accessionNumber;
+
     @Column(name = "created_by_name", length = 200)
     private String createdByName;
 

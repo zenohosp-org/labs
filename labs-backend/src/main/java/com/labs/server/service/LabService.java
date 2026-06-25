@@ -50,6 +50,15 @@ public class LabService {
     @Lazy
     private final LabBillingService labBillingService;
 
+    // Phase 1 — specimen tracking + accession number generation. @Lazy because
+    // LabSpecimenService also takes LabOrderRepository, so eager wiring would
+    // be a constructor-time cycle.
+    @Lazy
+    private final LabSpecimenService labSpecimenService;
+
+    // Phase 0 — append-only audit trail.
+    private final AuditService auditService;
+
     public List<LabOrderDTO> getOrders(UUID hospitalId, String status) {
         if (status != null && !status.isBlank()) {
             if ("COMPLETED".equalsIgnoreCase(status)) {
@@ -132,7 +141,13 @@ public class LabService {
                 .createdByName(createdByName)
                 .build();
 
-        return toDTO(orderRepository.save(order));
+        LabOrder saved = orderRepository.save(order);
+        // Phase 1 — assign accession number at creation so it can be printed
+        // on the requisition before the sample is even drawn.
+        labSpecimenService.ensureOrderHasAccession(saved);
+        auditService.record("LabOrder", saved.getId().toString(), "CREATE",
+                hospital.getId(), null, saved);
+        return toDTO(saved);
     }
 
     /**
@@ -147,7 +162,10 @@ public class LabService {
         if (order.getStatus() != LabStatus.PENDING_COLLECTION) {
             throw new RuntimeException("Only PENDING_COLLECTION orders can be cancelled");
         }
+        UUID hospitalId = order.getHospital() != null ? order.getHospital().getId() : null;
         orderRepository.delete(order);
+        auditService.record("LabOrder", String.valueOf(id), "DELETE",
+                hospitalId, order, null);
     }
 
     @Transactional
@@ -157,9 +175,28 @@ public class LabService {
         if (order.getStatus() != LabStatus.PENDING_COLLECTION) {
             throw new RuntimeException("Order is not in PENDING_COLLECTION state");
         }
+        LabStatus previous = order.getStatus();
         order.setStatus(LabStatus.AWAITING_REPORT);
         order.setCollectedAt(java.time.LocalDateTime.now());
-        return toDTO(orderRepository.save(order));
+        LabOrder saved = orderRepository.save(order);
+
+        // Phase 1c — auto-create a default specimen row if the frontend hasn't
+        // already submitted one via POST /api/lab/{id}/specimens. Keeps the
+        // legacy "click Collect" flow working while the new specimen-entry UI
+        // is being rolled out. No-op for orders that already have specimens.
+        try {
+            labSpecimenService.autoCreateForOrderIfMissing(saved, saved.getCreatedByName(), null);
+        } catch (Exception e) {
+            LoggerFactory.getLogger(LabService.class)
+                    .warn("Auto-specimen creation failed for lab order {}: {}", saved.getId(), e.getMessage());
+        }
+
+        auditService.record("LabOrder", saved.getId().toString(), "STATUS_CHANGE",
+                saved.getHospital().getId(),
+                java.util.Map.of("status", previous.name()),
+                java.util.Map.of("status", LabStatus.AWAITING_REPORT.name(),
+                        "collectedAt", saved.getCollectedAt().toString()));
+        return toDTO(saved);
     }
 
     @Transactional
@@ -169,6 +206,8 @@ public class LabService {
         if (order.getStatus() != LabStatus.AWAITING_REPORT) {
             throw new RuntimeException("Order is not in AWAITING_REPORT state");
         }
+        LabStatus previous = order.getStatus();
+        String previousFindings = order.getFindings();
         order.setStatus(LabStatus.REPORT_GENERATED);
         order.setFindings(req.getFindings());
         order.setObservation(req.getObservation());
@@ -186,6 +225,14 @@ public class LabService {
             LoggerFactory.getLogger(LabService.class)
                     .warn("Auto-bill failed for lab order {}: {}", saved.getId(), e.getMessage());
         }
+
+        auditService.record("LabOrder", saved.getId().toString(), "REPORT_GENERATED",
+                saved.getHospital().getId(),
+                java.util.Map.of("status", previous.name(),
+                        "findings", previousFindings != null ? previousFindings : ""),
+                java.util.Map.of("status", LabStatus.REPORT_GENERATED.name(),
+                        "findings", req.getFindings() != null ? req.getFindings() : "",
+                        "reportId", saved.getReportId()));
         return toDTO(saved);
     }
 
@@ -225,6 +272,7 @@ public class LabService {
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
+                .accessionNumber(o.getAccessionNumber())
                 .createdByName(o.getCreatedByName())
                 .createdAt(o.getCreatedAt())
                 .build();

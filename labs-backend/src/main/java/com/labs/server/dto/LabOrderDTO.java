@@ -36,6 +36,10 @@ public class LabOrderDTO {
     private String findings;
     private String observation;
     private String reportId;
+
+    /** Phase 1 — public lab-wide accession printed on barcodes / requisitions. */
+    private String accessionNumber;
+
     private String createdByName;
     private LocalDateTime createdAt;
 }
