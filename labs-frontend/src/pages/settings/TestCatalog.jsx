@@ -323,12 +323,32 @@ export default function TestCatalog() {
                 ),
         },
         {
+            header: "Ranges",
+            width: "8%",
+            render: (r) =>
+                r.rangeCount && r.rangeCount > 0 ? (
+                    <Badge tone="info" soft>{r.rangeCount}</Badge>
+                ) : (
+                    <span className="text-gray-300 text-12">none</span>
+                ),
+        },
+        {
             header: "Status",
             width: "8%",
             render: (r) => (
-                <Badge tone={r.active ? "success" : "danger"} soft>
-                    {r.active ? "Active" : "Inactive"}
-                </Badge>
+                <div className="flex flex-col gap-0.5">
+                    <Badge tone={r.active ? "success" : "danger"} soft>
+                        {r.active ? "Active" : "Inactive"}
+                    </Badge>
+                    {r.hospitalServiceId && (
+                        <span
+                            className="text-11 text-emerald-700"
+                            title={`Linked to HMS service ${r.hospitalServiceId}`}
+                        >
+                            → service
+                        </span>
+                    )}
+                </div>
             ),
         },
         {

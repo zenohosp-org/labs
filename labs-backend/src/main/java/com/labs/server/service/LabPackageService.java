@@ -55,6 +55,7 @@ public class LabPackageService {
                                 ? it.getInvestigationType() : "PATHOLOGY")
                         .category(it.getCategory())
                         .displayOrder(i)
+                        .labTestId(it.getLabTestId())   // Phase 3 — FK to lab_test_catalog
                         .build());
             }
         }
@@ -104,5 +105,7 @@ public class LabPackageService {
         private String investigationName;
         private String investigationType;
         private String category;
+        /** Phase 3 — FK to lab_test_catalog.id when picked from the catalogue. */
+        private Long labTestId;
     }
 }

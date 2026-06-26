@@ -44,6 +44,12 @@ public class LabTestCatalogDTO {
     private Integer displayOrder;
     private Boolean active;
 
+    /** Phase 3 — loose link to the HMS hospital_services row that bills this test. */
+    private UUID hospitalServiceId;
+
+    /** Phase 3 — number of reference-range bands attached to this test (computed). */
+    private Long rangeCount;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

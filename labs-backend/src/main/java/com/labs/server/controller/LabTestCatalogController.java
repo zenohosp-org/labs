@@ -43,6 +43,28 @@ public class LabTestCatalogController {
         return ResponseEntity.ok(service.expandPanel(resolveHospitalId(auth, hospitalId), panelCode));
     }
 
+    /**
+     * Phase 3 — fuzzy search for the package / range editor pickers.
+     * Returns top {@code limit} active rows whose name / test_code / aliases
+     * / LOINC contains the query.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<LabTestCatalogDTO>> search(
+            @RequestParam String q,
+            @RequestParam(required = false, defaultValue = "20") int limit,
+            @RequestParam(required = false) UUID hospitalId,
+            Authentication auth) {
+        return ResponseEntity.ok(service.search(resolveHospitalId(auth, hospitalId), q, limit));
+    }
+
+    /** Phase 3 — ranges that belong to a specific catalogue row. */
+    @GetMapping("/{id}/ranges")
+    public ResponseEntity<List<com.labs.server.entity.LabReferenceRange>> ranges(
+            @PathVariable Long id,
+            Authentication auth) {
+        return ResponseEntity.ok(service.rangesFor(resolveHospitalId(auth, null), id));
+    }
+
     @PostMapping
     public ResponseEntity<LabTestCatalogDTO> upsert(
             @RequestBody CreateTestCatalogRequest req,

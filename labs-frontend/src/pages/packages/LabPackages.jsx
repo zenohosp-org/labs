@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { labPackageApi } from "@/api/labsClient";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import TestPicker from "@/components/TestPicker";
 import {
     Package, Plus, Edit2, Trash2, ToggleLeft, ToggleRight,
     ChevronDown, ChevronUp, GripVertical, X, Check, AlertCircle,
@@ -42,7 +43,7 @@ const CATEGORY_CHIP_CLS = {
     CUSTOM: "is-cat-custom",
 };
 
-const EMPTY_ITEM = { investigationName: "", investigationType: "PATHOLOGY", category: "" };
+const EMPTY_ITEM = { investigationName: "", investigationType: "PATHOLOGY", category: "", labTestId: null };
 
 const EMPTY_FORM = {
     name: "", description: "", category: "GENERAL",
@@ -200,13 +201,24 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                                         <GripVertical className="hms-pkg-modal__test-grip w-4 h-4" />
                                         <div className="hms-pkg-modal__test-fields">
                                             <div className="is-span-2">
-                                                <input
+                                                <TestPicker
                                                     value={it.investigationName}
-                                                    onChange={(e) =>
-                                                        updateItem(i, "investigationName", e.target.value)
-                                                    }
+                                                    labTestId={it.labTestId}
+                                                    onChange={(v) => updateItem(i, "investigationName", v)}
+                                                    onPick={(t) => {
+                                                        setForm((f) => {
+                                                            const items = [...f.items];
+                                                            items[i] = {
+                                                                ...items[i],
+                                                                investigationName: t.name,
+                                                                labTestId: t.labTestId,
+                                                                category: t.category || items[i].category,
+                                                            };
+                                                            return { ...f, items };
+                                                        });
+                                                    }}
+                                                    onClear={() => updateItem(i, "labTestId", null)}
                                                     placeholder="Investigation name (e.g. SGPT (ALT))"
-                                                    className="hms-pkg-modal__test-field"
                                                 />
                                             </div>
                                             <div>

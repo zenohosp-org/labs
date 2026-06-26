@@ -108,6 +108,15 @@ public class LabReferenceRange {
     @Column(name = "source_citation", length = 300)
     private String sourceCitation;
 
+    /**
+     * Phase 3 — FK to lab_test_catalog.id. When set, this range is OWNED by
+     * the test (cascade-deleted with it). Match queries can short-circuit
+     * the free-text testName lookup. NULL on legacy rows; V10 backfills by
+     * name match.
+     */
+    @Column(name = "lab_test_id")
+    private Long labTestId;
+
     @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;

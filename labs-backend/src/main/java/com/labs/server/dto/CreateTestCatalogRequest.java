@@ -3,6 +3,7 @@ package com.labs.server.dto;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Catalog row create / update payload. {@code hospitalId} comes from JWT or
@@ -42,4 +43,7 @@ public class CreateTestCatalogRequest {
 
     private Integer displayOrder;
     private Boolean active;
+
+    /** Phase 3 — optional loose pointer to the HMS hospital_services row that bills this test. */
+    private UUID hospitalServiceId;
 }

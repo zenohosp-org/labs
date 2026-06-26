@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { checkupApi } from "@/utils/api";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import TestPicker from "@/components/TestPicker";
 import {
   Package, Plus, Edit2, Trash2, ToggleLeft, ToggleRight,
   ChevronDown, ChevronUp, GripVertical, X, Check, AlertCircle,
@@ -33,7 +34,7 @@ const CATEGORY_CHIP_CLS = {
   CUSTOM: "is-cat-custom",
 };
 
-const EMPTY_TEST = { testName: "", testCategory: "GENERAL", normalRange: "", mandatory: true };
+const EMPTY_TEST = { testName: "", testCategory: "GENERAL", normalRange: "", mandatory: true, labTestId: null };
 
 const EMPTY_FORM = {
   name: "", description: "", category: "GENERAL", targetGender: "ANY",
@@ -141,7 +142,28 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                     <GripVertical className="hms-pkg-modal__test-grip w-4 h-4" />
                     <div className="hms-pkg-modal__test-fields">
                       <div className="is-span-2">
-                        <input value={t.testName} onChange={e => updateTest(i, "testName", e.target.value)} placeholder="Test name (e.g. Complete Blood Count)" className="hms-pkg-modal__test-field" />
+                        <TestPicker
+                          value={t.testName}
+                          labTestId={t.labTestId}
+                          onChange={(v) => updateTest(i, "testName", v)}
+                          onPick={(picked) => {
+                            setForm((f) => {
+                              const tests = [...f.tests];
+                              tests[i] = {
+                                ...tests[i],
+                                testName: picked.name,
+                                labTestId: picked.labTestId,
+                                testCategory: picked.category || tests[i].testCategory,
+                                normalRange: tests[i].normalRange || picked.defaultUnit
+                                  ? tests[i].normalRange
+                                  : "",
+                              };
+                              return { ...f, tests };
+                            });
+                          }}
+                          onClear={() => updateTest(i, "labTestId", null)}
+                          placeholder="Test name (e.g. Complete Blood Count)"
+                        />
                       </div>
                       <div>
                         <SearchableSelect value={t.testCategory} onChange={v => updateTest(i, "testCategory", v)}

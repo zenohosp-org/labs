@@ -2,14 +2,19 @@ package com.labs.server.service;
 
 import com.labs.server.dto.CreateTestCatalogRequest;
 import com.labs.server.dto.LabTestCatalogDTO;
+import com.labs.server.entity.LabReferenceRange;
 import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.repository.LabReferenceRangeRepository;
 import com.labs.server.repository.LabTestCatalogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +33,7 @@ import java.util.stream.Collectors;
 public class LabTestCatalogService {
 
     private final LabTestCatalogRepository repository;
+    private final LabReferenceRangeRepository rangeRepository;
     private final LabTestCatalogSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
     private final AuditService auditService;
 
@@ -41,7 +47,36 @@ public class LabTestCatalogService {
         List<LabTestCatalog> rows = activeOnly
                 ? repository.findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId)
                 : repository.findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId);
-        return rows.stream().map(this::toDTO).collect(Collectors.toList());
+
+        // Single query → map of labTestId → range count. Avoids N+1 when the
+        // catalogue list page renders "N ranges" per row.
+        Map<Long, Long> rangeCounts = new HashMap<>();
+        for (Object[] row : rangeRepository.countByHospitalGroupedByLabTestId(hospitalId)) {
+            if (row[0] != null) rangeCounts.put((Long) row[0], (Long) row[1]);
+        }
+
+        return rows.stream().map(r -> toDTOWithRangeCount(r, rangeCounts.getOrDefault(r.getId(), 0L)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Phase 3 — fuzzy search over name / test_code / aliases / LOINC. Used by
+     * the package + range editor pickers. Active rows only, top {@code limit}.
+     */
+    public List<LabTestCatalogDTO> search(UUID hospitalId, String q, int limit) {
+        if (q == null || q.isBlank()) return List.of();
+        int cappedLimit = Math.min(Math.max(limit, 1), 50);
+        return repository.searchByHospital(hospitalId, q.trim(), PageRequest.of(0, cappedLimit))
+                .stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * Phase 3 — list ranges that belong to a test. Tenant-checked against the
+     * caller's hospital so a forged id can't expose cross-tenant data.
+     */
+    public List<LabReferenceRange> rangesFor(UUID hospitalId, Long labTestId) {
+        LabTestCatalog test = loadForTenant(hospitalId, labTestId);
+        return rangeRepository.findByLabTestIdOrderBySexAscMinAgeYearsAsc(test.getId());
     }
 
     public Optional<LabTestCatalog> findByCode(UUID hospitalId, String testCode) {
@@ -128,6 +163,7 @@ public class LabTestCatalogService {
         row.setPrice(r.getPrice());
         row.setGstRate(r.getGstRate());
         row.setDisplayOrder(r.getDisplayOrder());
+        row.setHospitalServiceId(r.getHospitalServiceId());
         if (r.getActive() != null) row.setActive(r.getActive());
     }
 
@@ -157,6 +193,7 @@ public class LabTestCatalogService {
                 .price(r.getPrice())
                 .gstRate(r.getGstRate())
                 .displayOrder(r.getDisplayOrder())
+                .hospitalServiceId(r.getHospitalServiceId())
                 .active(r.getActive())
                 .createdAt(r.getCreatedAt())
                 .updatedAt(r.getUpdatedAt())
@@ -164,6 +201,10 @@ public class LabTestCatalogService {
     }
 
     public LabTestCatalogDTO toDTO(LabTestCatalog r) {
+        return toDTOWithRangeCount(r, null);
+    }
+
+    private LabTestCatalogDTO toDTOWithRangeCount(LabTestCatalog r, Long rangeCount) {
         return LabTestCatalogDTO.builder()
                 .id(r.getId())
                 .hospitalId(r.getHospitalId())
@@ -189,6 +230,8 @@ public class LabTestCatalogService {
                 .price(r.getPrice())
                 .gstRate(r.getGstRate())
                 .displayOrder(r.getDisplayOrder())
+                .hospitalServiceId(r.getHospitalServiceId())
+                .rangeCount(rangeCount)
                 .active(r.getActive())
                 .createdAt(r.getCreatedAt())
                 .updatedAt(r.getUpdatedAt())

@@ -113,6 +113,14 @@ public class LabTestCatalog {
     @Column(name = "display_order")
     private Integer displayOrder;
 
+    /**
+     * Phase 3 — optional loose pointer to the HMS hospital_services row that
+     * bills for this test. No FK constraint (HMS owns the table). UI surfaces
+     * this so price changes on the HMS side stay in sync.
+     */
+    @Column(name = "hospital_service_id")
+    private UUID hospitalServiceId;
+
     @Column(name = "active", nullable = false)
     @Builder.Default
     private Boolean active = true;

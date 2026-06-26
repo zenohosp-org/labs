@@ -3,6 +3,7 @@ package com.labs.server.dto;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -19,4 +20,18 @@ public class LabReferenceRangeRequest {
     private String unit;
     private String rangeText;
     private Boolean isActive;
+
+    // ── Phase 2 extensions (V8) ─────────────────────────────────
+    private BigDecimal criticalLow;
+    private BigDecimal criticalHigh;
+    private String specialState;
+    private String loincCode;
+    private String method;
+    private LocalDate effectiveFrom;
+    private LocalDate effectiveTo;
+    private String sourceCitation;
+
+    // ── Phase 3 link (V9) ───────────────────────────────────────
+    /** FK to lab_test_catalog.id. When set, the test_name + unit auto-fill from the catalogue row. */
+    private Long labTestId;
 }

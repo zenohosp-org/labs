@@ -382,6 +382,8 @@ export const rejectionReasonApi = {
 
 // ── Test catalog (Phase 2 — per-hospital LOINC-coded test list) ────────
 // Lazy-seeded on first GET with ~47 Indian-lab analytes across 7 panels.
+// Phase 3 — also the source of truth pickers consume from when adding
+// tests to ranges, lab packages, and health checkup packages.
 export const testCatalogApi = {
     list: async (hospitalId, activeOnly = true) => {
         const { data } = await api.get("/api/lab-test-catalog", {
@@ -393,6 +395,19 @@ export const testCatalogApi = {
         const { data } = await api.get(`/api/lab-test-catalog/panel/${panelCode}`, {
             params: { hospitalId },
         });
+        return data;
+    },
+    /** Phase 3 — fuzzy search for the test picker (name / code / aliases / LOINC). */
+    search: async (q, { hospitalId, limit = 20 } = {}) => {
+        if (!q || !q.trim()) return [];
+        const params = { q, limit };
+        if (hospitalId) params.hospitalId = hospitalId;
+        const { data } = await api.get("/api/lab-test-catalog/search", { params });
+        return data;
+    },
+    /** Phase 3 — ranges that belong to a specific test row. */
+    rangesFor: async (testId) => {
+        const { data } = await api.get(`/api/lab-test-catalog/${testId}/ranges`);
         return data;
     },
     upsert: async (payload) => {

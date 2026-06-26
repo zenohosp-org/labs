@@ -23,6 +23,7 @@ public class LabReferenceRangeService {
 
     private final LabReferenceRangeRepository repository;
     private final LabReferenceRangeSeeder seeder;   // separate bean — see seeder javadoc for the readOnly-tx rationale
+    private final com.labs.server.repository.LabTestCatalogRepository testCatalogRepository;
 
     /**
      * Returns the catalogue for a hospital. Lazy-seeds the defaults the first
@@ -38,6 +39,7 @@ public class LabReferenceRangeService {
 
     @Transactional
     public LabReferenceRange create(UUID hospitalId, LabReferenceRangeRequest req) {
+        applyCatalogueDenorm(hospitalId, req);
         LabReferenceRange row = LabReferenceRange.builder()
                 .hospitalId(hospitalId)
                 .testName(req.getTestName())
@@ -49,6 +51,15 @@ public class LabReferenceRangeService {
                 .maxValue(req.getMaxValue())
                 .unit(req.getUnit())
                 .rangeText(req.getRangeText())
+                .criticalLow(req.getCriticalLow())
+                .criticalHigh(req.getCriticalHigh())
+                .specialState(req.getSpecialState())
+                .loincCode(req.getLoincCode())
+                .method(req.getMethod())
+                .effectiveFrom(req.getEffectiveFrom())
+                .effectiveTo(req.getEffectiveTo())
+                .sourceCitation(req.getSourceCitation())
+                .labTestId(req.getLabTestId())
                 .isActive(req.getIsActive() != null ? req.getIsActive() : Boolean.TRUE)
                 .build();
         return repository.save(row);
@@ -56,6 +67,7 @@ public class LabReferenceRangeService {
 
     @Transactional
     public LabReferenceRange update(UUID hospitalId, UUID id, LabReferenceRangeRequest req) {
+        applyCatalogueDenorm(hospitalId, req);
         LabReferenceRange row = loadForTenant(hospitalId, id);
         row.setTestName(req.getTestName());
         row.setCategory(req.getCategory());
@@ -66,9 +78,40 @@ public class LabReferenceRangeService {
         row.setMaxValue(req.getMaxValue());
         row.setUnit(req.getUnit());
         row.setRangeText(req.getRangeText());
+        row.setCriticalLow(req.getCriticalLow());
+        row.setCriticalHigh(req.getCriticalHigh());
+        row.setSpecialState(req.getSpecialState());
+        row.setLoincCode(req.getLoincCode());
+        row.setMethod(req.getMethod());
+        row.setEffectiveFrom(req.getEffectiveFrom());
+        row.setEffectiveTo(req.getEffectiveTo());
+        row.setSourceCitation(req.getSourceCitation());
+        row.setLabTestId(req.getLabTestId());
         if (req.getIsActive() != null) row.setIsActive(req.getIsActive());
         return repository.save(row);
     }
+
+    /**
+     * When the caller picked a test from the catalogue, denormalise the
+     * test_name / unit / loinc / category / method from the catalogue row so
+     * the legacy free-text columns stay consistent. Only fills blanks — the
+     * caller can still override any field explicitly.
+     */
+    private void applyCatalogueDenorm(UUID hospitalId, LabReferenceRangeRequest req) {
+        if (req.getLabTestId() == null) return;
+        testCatalogRepository.findById(req.getLabTestId()).ifPresent(test -> {
+            if (!hospitalId.equals(test.getHospitalId())) {
+                throw new RuntimeException("labTestId does not belong to this hospital");
+            }
+            if (isBlank(req.getTestName())) req.setTestName(test.getName());
+            if (isBlank(req.getCategory()) && test.getCategory() != null) req.setCategory(test.getCategory());
+            if (isBlank(req.getUnit()) && test.getDefaultUnit() != null) req.setUnit(test.getDefaultUnit());
+            if (isBlank(req.getLoincCode()) && test.getLoincCode() != null) req.setLoincCode(test.getLoincCode());
+            if (isBlank(req.getMethod()) && test.getDefaultMethod() != null) req.setMethod(test.getDefaultMethod());
+        });
+    }
+
+    private static boolean isBlank(String s) { return s == null || s.isBlank(); }
 
     @Transactional
     public void delete(UUID hospitalId, UUID id) {
