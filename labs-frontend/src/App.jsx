@@ -20,6 +20,7 @@ import LabPackages from "@/pages/packages/LabPackages";
 import LabReportView from "@/pages/labs/LabReportView";
 import LabQueue from "@/pages/labs/LabQueue";
 import LabReports from "@/pages/labs/LabReports";
+import CollectionQueue from "@/pages/labs/CollectionQueue";
 
 function App() {
     return (
@@ -50,6 +51,7 @@ function App() {
                                 + IPD Labs tab. */}
                             <Route path="lab" element={<Navigate to="/lab/queue" replace />} />
                             <Route path="lab/queue" element={<LabQueue />} />
+                            <Route path="lab/collection" element={<CollectionQueue />} />
                             <Route path="lab/reports" element={<LabReports />} />
                             <Route path="lab/reports/:id" element={<LabReportView />} />
 

@@ -17,11 +17,13 @@ import {
     TestTube,
     History,
     FileSignature,
+    Beaker,
 } from "lucide-react";
 
 const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home };
 
 const PATHOLOGY_LINKS = [
+    { label: "Collection", to: "/lab/collection", icon: Beaker },
     { label: "Lab Queue", to: "/lab/queue", icon: TestTube },
     { label: "Reports", to: "/lab/reports", icon: FileText },
 ];

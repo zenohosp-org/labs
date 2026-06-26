@@ -530,6 +530,30 @@ export const reportVerifyApi = {
     },
 };
 
+// ── Collection console (Phase 6 — front-of-house) ─────────────────────
+// Patient-grouped pending orders with a pre-computed tube plan; one
+// bulk-collect call atomically marks every named order collected and
+// materialises the tubes (one specimen per (order, tube) pair) so the
+// chain of custody starts populating immediately.
+export const collectionApi = {
+    queue: async () => {
+        const { data } = await api.get("/api/collection/queue");
+        return data;
+    },
+    patientPlan: async (patientId) => {
+        const { data } = await api.get(`/api/collection/queue/${patientId}`);
+        return data;
+    },
+    bulkCollect: async (payload) => {
+        const { data } = await api.post("/api/collection/bulk-collect", payload);
+        return data;
+    },
+    stats: async () => {
+        const { data } = await api.get("/api/collection/stats");
+        return data;
+    },
+};
+
 // ── Audit trail (Phase 0 — read-only viewer) ───────────────────────────
 export const auditApi = {
     list: async ({ entityType, entityId, from, to, page = 0, size = 50 } = {}) => {
