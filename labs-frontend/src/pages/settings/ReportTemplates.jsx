@@ -6,7 +6,9 @@ import {
     FileSignature,
     AlertTriangle,
     MoreHorizontal,
+    Eye,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { reportTemplateApi } from "@/api/labsClient";
 import {
@@ -21,6 +23,7 @@ import {
     Select,
     Table,
 } from "@/components/ui";
+import ReportTemplatePreview from "@/components/ReportTemplatePreview";
 
 const DISCIPLINE_OPTIONS = [
     { value: "", label: "— Applies to all —" },
@@ -58,6 +61,7 @@ const EMPTY = {
  */
 export default function ReportTemplates() {
     const { notify } = useNotification();
+    const { user } = useAuth();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editor, setEditor] = useState({ open: false, form: EMPTY });
@@ -286,7 +290,16 @@ export default function ReportTemplates() {
                 isOpen={editor.open}
                 onClose={() => setEditor({ open: false, form: EMPTY })}
                 size="xl"
-                title={editor.form.id ? "Edit template" : "New template"}
+                className="rt-editor-modal"
+                title={
+                    <span className="inline-flex items-center gap-2">
+                        <FileSignature size={16} />
+                        {editor.form.id ? "Edit template" : "New template"}
+                        <span className="text-12 font-normal text-gray-500 inline-flex items-center gap-1 ml-2">
+                            <Eye size={11} /> Live preview on the right
+                        </span>
+                    </span>
+                }
                 footer={
                     <>
                         <Button variant="cancel" onClick={() => setEditor({ open: false, form: EMPTY })}>
@@ -298,120 +311,152 @@ export default function ReportTemplates() {
                     </>
                 }
             >
-                <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Template name *">
-                        <Input
-                            value={editor.form.name}
-                            onChange={(e) => set("name", e.target.value)}
-                            placeholder="e.g. Default Pathology Report"
-                            autoFocus
-                        />
-                    </FormGroup>
-                    <FormGroup label="Discipline">
-                        <Select
-                            value={editor.form.discipline}
-                            onChange={(e) => set("discipline", e.target.value)}
-                            options={DISCIPLINE_OPTIONS}
-                        />
-                    </FormGroup>
-                    <FormGroup label="Accent colour">
-                        <Input
-                            type="color"
-                            value={editor.form.accentColor || "#14b8a6"}
-                            onChange={(e) => set("accentColor", e.target.value)}
-                        />
-                    </FormGroup>
-                </div>
+                <style>{editorCss}</style>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <FormGroup label="Logo URL" hint="Public URL — Supabase storage / CDN. Max width 200px on PDF.">
-                        <Input
-                            value={editor.form.logoUrl}
-                            onChange={(e) => set("logoUrl", e.target.value)}
-                            placeholder="https://…/logo.png"
-                        />
-                    </FormGroup>
-                    <FormGroup label="Portal base URL" hint="Used to build the verify QR — e.g. https://labs.zenohosp.com">
-                        <Input
-                            value={editor.form.portalBaseUrl}
-                            onChange={(e) => set("portalBaseUrl", e.target.value)}
-                            placeholder="https://labs.zenohosp.com"
-                        />
-                    </FormGroup>
-                </div>
+                <div className="rt-editor-split">
+                    {/* ── FORM PANE ────────────────────────────────────── */}
+                    <div className="rt-editor-form">
+                        <div className="grid grid-cols-3 gap-3">
+                            <FormGroup label="Template name *">
+                                <Input
+                                    value={editor.form.name}
+                                    onChange={(e) => set("name", e.target.value)}
+                                    placeholder="e.g. Default Pathology Report"
+                                    autoFocus
+                                />
+                            </FormGroup>
+                            <FormGroup label="Discipline">
+                                <Select
+                                    value={editor.form.discipline}
+                                    onChange={(e) => set("discipline", e.target.value)}
+                                    options={DISCIPLINE_OPTIONS}
+                                />
+                            </FormGroup>
+                            <FormGroup label="Accent colour">
+                                <div className="rt-color-row">
+                                    <Input
+                                        type="color"
+                                        value={editor.form.accentColor || "#14b8a6"}
+                                        onChange={(e) => set("accentColor", e.target.value)}
+                                    />
+                                    <code className="rt-color-code">
+                                        {(editor.form.accentColor || "#14b8a6").toUpperCase()}
+                                    </code>
+                                </div>
+                            </FormGroup>
+                        </div>
 
-                <FormGroup
-                    label="Header HTML"
-                    hint="Free HTML below the logo (clinic address, GSTIN, contact). Plain text also works."
-                >
-                    <textarea
-                        rows={3}
-                        className="hms-input"
-                        value={editor.form.headerHtml}
-                        onChange={(e) => set("headerHtml", e.target.value)}
-                        placeholder="<div>123 Main Rd, Chennai — 600001<br/>GSTIN 33ABCDE1234F1Z5</div>"
-                    />
-                </FormGroup>
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormGroup label="Logo URL" hint="Public URL — Supabase storage / CDN. Max width 200px on PDF.">
+                                <Input
+                                    value={editor.form.logoUrl}
+                                    onChange={(e) => set("logoUrl", e.target.value)}
+                                    placeholder="https://…/logo.png"
+                                />
+                            </FormGroup>
+                            <FormGroup label="Portal base URL" hint="Used to build the verify QR — e.g. https://labs.zenohosp.com">
+                                <Input
+                                    value={editor.form.portalBaseUrl}
+                                    onChange={(e) => set("portalBaseUrl", e.target.value)}
+                                    placeholder="https://labs.zenohosp.com"
+                                />
+                            </FormGroup>
+                        </div>
 
-                <FormGroup label="Footer HTML" hint="Disclaimer / contact line at the bottom of the report.">
-                    <textarea
-                        rows={2}
-                        className="hms-input"
-                        value={editor.form.footerHtml}
-                        onChange={(e) => set("footerHtml", e.target.value)}
-                        placeholder="<em>This report is for clinical purposes only — consult your doctor before acting on it.</em>"
-                    />
-                </FormGroup>
+                        <FormGroup
+                            label="Header HTML"
+                            hint="Free HTML below the logo (clinic address, GSTIN, contact). Plain text also works."
+                        >
+                            <textarea
+                                rows={3}
+                                className="hms-input rt-monospace"
+                                value={editor.form.headerHtml}
+                                onChange={(e) => set("headerHtml", e.target.value)}
+                                placeholder="<div>123 Main Rd, Chennai — 600001<br/>GSTIN 33ABCDE1234F1Z5</div>"
+                            />
+                        </FormGroup>
 
-                <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Signatory name">
-                        <Input
-                            value={editor.form.signatoryName}
-                            onChange={(e) => set("signatoryName", e.target.value)}
-                            placeholder="Dr. Vasantha Kumari"
-                        />
-                    </FormGroup>
-                    <FormGroup label="Qualification">
-                        <Input
-                            value={editor.form.signatoryQualification}
-                            onChange={(e) => set("signatoryQualification", e.target.value)}
-                            placeholder="MD (Pathology)"
-                        />
-                    </FormGroup>
-                    <FormGroup label="Reg. number">
-                        <Input
-                            value={editor.form.signatoryRegistration}
-                            onChange={(e) => set("signatoryRegistration", e.target.value)}
-                            placeholder="MCI 123456"
-                        />
-                    </FormGroup>
-                </div>
+                        <FormGroup label="Footer HTML" hint="Disclaimer / contact line at the bottom of the report.">
+                            <textarea
+                                rows={2}
+                                className="hms-input rt-monospace"
+                                value={editor.form.footerHtml}
+                                onChange={(e) => set("footerHtml", e.target.value)}
+                                placeholder="<em>This report is for clinical purposes only — consult your doctor before acting on it.</em>"
+                            />
+                        </FormGroup>
 
-                <FormGroup label="Signature image URL" hint="Scanned signature shown above the signatory name on the PDF.">
-                    <Input
-                        value={editor.form.signatureImageUrl}
-                        onChange={(e) => set("signatureImageUrl", e.target.value)}
-                        placeholder="https://…/signature.png"
-                    />
-                </FormGroup>
+                        <div className="grid grid-cols-3 gap-3">
+                            <FormGroup label="Signatory name">
+                                <Input
+                                    value={editor.form.signatoryName}
+                                    onChange={(e) => set("signatoryName", e.target.value)}
+                                    placeholder="Dr. Vasantha Kumari"
+                                />
+                            </FormGroup>
+                            <FormGroup label="Qualification">
+                                <Input
+                                    value={editor.form.signatoryQualification}
+                                    onChange={(e) => set("signatoryQualification", e.target.value)}
+                                    placeholder="MD (Pathology)"
+                                />
+                            </FormGroup>
+                            <FormGroup label="Reg. number">
+                                <Input
+                                    value={editor.form.signatoryRegistration}
+                                    onChange={(e) => set("signatoryRegistration", e.target.value)}
+                                    placeholder="MCI 123456"
+                                />
+                            </FormGroup>
+                        </div>
 
-                <div className="flex gap-6 mt-2 text-13 text-gray-700">
-                    <label className="inline-flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            checked={!!editor.form.isDefault}
-                            onChange={(e) => set("isDefault", e.target.checked)}
-                        />
-                        Default for this scope
-                    </label>
-                    <label className="inline-flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            checked={!!editor.form.active}
-                            onChange={(e) => set("active", e.target.checked)}
-                        />
-                        Active
-                    </label>
+                        <FormGroup label="Signature image URL" hint="Scanned signature shown above the signatory name on the PDF.">
+                            <Input
+                                value={editor.form.signatureImageUrl}
+                                onChange={(e) => set("signatureImageUrl", e.target.value)}
+                                placeholder="https://…/signature.png"
+                            />
+                        </FormGroup>
+
+                        <div className="flex gap-6 mt-2 text-13 text-gray-700">
+                            <label className="inline-flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={!!editor.form.isDefault}
+                                    onChange={(e) => set("isDefault", e.target.checked)}
+                                />
+                                Default for this scope
+                            </label>
+                            <label className="inline-flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={!!editor.form.active}
+                                    onChange={(e) => set("active", e.target.checked)}
+                                />
+                                Active
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* ── PREVIEW PANE ─────────────────────────────────── */}
+                    <div className="rt-editor-preview">
+                        <div className="rt-preview-header">
+                            <Eye size={12} /> Live preview · A4
+                        </div>
+                        <div className="rt-preview-frame">
+                            <ReportTemplatePreview
+                                template={{
+                                    ...editor.form,
+                                    hospitalName: user?.hospitalName || "Hospital",
+                                }}
+                                scale={0.58}
+                            />
+                        </div>
+                        <div className="rt-preview-foot">
+                            Mirrors the PDF renderer · sample patient data ·
+                            updates as you type
+                        </div>
+                    </div>
                 </div>
             </Modal>
 
@@ -441,3 +486,91 @@ export default function ReportTemplates() {
         </div>
     );
 }
+
+// Scoped to the editor modal so it doesn't leak into the rest of the app.
+// Prod-grade clean movement notes:
+//   - the split layout uses flex with min-width:0 on the form pane so
+//     long URLs don't blow out the right pane width
+//   - the preview frame has its own scroll container — A4 fits at 0.58×
+//     in ~480 px wide pane without horizontal scroll
+//   - subtle background diff (white form / soft slate preview) so the
+//     eye reads the two zones as form/output without a heavy divider
+//   - the preview pane's children animate via the in-component CSS
+//     (accent + logo + signature transitions live in
+//     ReportTemplatePreview)
+const editorCss = `
+.rt-editor-modal { max-width: 1180px; width: calc(100vw - 48px); }
+.rt-editor-modal .hms-modal-body { padding: 0; }
+.rt-editor-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+    min-height: 70vh;
+    max-height: calc(100vh - 220px);
+}
+.rt-editor-form {
+    padding: 16px 18px;
+    overflow-y: auto;
+    border-right: 1px solid #e5e7eb;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+}
+.rt-editor-preview {
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.rt-preview-header {
+    padding: 8px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: white;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.rt-preview-frame {
+    flex: 1; overflow: auto;
+    background: #f1f5f9;
+    transition: background 250ms ease;
+}
+.rt-preview-foot {
+    padding: 6px 12px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+    font-size: 10px;
+    color: #94a3b8;
+    text-align: center;
+}
+.rt-color-row { display: flex; align-items: center; gap: 8px; }
+.rt-color-row input[type="color"] {
+    width: 44px; height: 32px; padding: 0; border-radius: 6px;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 200ms ease;
+}
+.rt-color-row input[type="color"]:hover { transform: scale(1.05); }
+.rt-color-code {
+    font-size: 11px; color: #475569; font-family: ui-monospace, monospace;
+}
+.rt-monospace {
+    font-family: ui-monospace, SFMono-Regular, "Menlo", monospace;
+    font-size: 12px;
+}
+
+/* Mobile/narrow: stack form on top, preview below */
+@media (max-width: 900px) {
+    .rt-editor-split {
+        grid-template-columns: 1fr;
+        max-height: none;
+    }
+    .rt-editor-form { border-right: none; border-bottom: 1px solid #e5e7eb; }
+    .rt-editor-preview { min-height: 60vh; }
+}
+`;
