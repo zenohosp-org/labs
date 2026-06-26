@@ -15,9 +15,9 @@ public interface LabReferenceRangeRepository extends JpaRepository<LabReferenceR
     long countByHospitalId(UUID hospitalId);
 
     // ── Phase 3 — FK lookups ─────────────────────────────────────────────
-    List<LabReferenceRange> findByLabTestIdOrderBySexAscMinAgeYearsAsc(Long labServiceId);
+    List<LabReferenceRange> findByLabServiceIdOrderBySexAscMinAgeYearsAsc(Long labServiceId);
 
-    long countByLabTestId(Long labServiceId);
+    long countByLabServiceId(Long labServiceId);
 
     /**
      * Aggregate range counts per lab_test_id for the hospital — used by the
@@ -30,7 +30,7 @@ public interface LabReferenceRangeRepository extends JpaRepository<LabReferenceR
         WHERE r.hospitalId = :hospitalId AND r.labServiceId IS NOT NULL
         GROUP BY r.labServiceId
     """)
-    List<Object[]> countByHospitalGroupedByLabTestId(@Param("hospitalId") UUID hospitalId);
+    List<Object[]> countByHospitalGroupedByLabServiceId(@Param("hospitalId") UUID hospitalId);
 
     /**
      * Lookup the candidate bands for a given test/sex/age tuple. Filters down

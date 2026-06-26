@@ -51,7 +51,7 @@ public class LabCatalogService {
         // Single query → map of labServiceId → range count. Avoids N+1 when the
         // catalogue list page renders "N ranges" per row.
         Map<Long, Long> rangeCounts = new HashMap<>();
-        for (Object[] row : rangeRepository.countByHospitalGroupedByLabTestId(hospitalId)) {
+        for (Object[] row : rangeRepository.countByHospitalGroupedByLabServiceId(hospitalId)) {
             if (row[0] != null) rangeCounts.put((Long) row[0], (Long) row[1]);
         }
 
@@ -76,7 +76,7 @@ public class LabCatalogService {
      */
     public List<LabReferenceRange> rangesFor(UUID hospitalId, Long labServiceId) {
         LabService test = loadForTenant(hospitalId, labServiceId);
-        return rangeRepository.findByLabTestIdOrderBySexAscMinAgeYearsAsc(test.getId());
+        return rangeRepository.findByLabServiceIdOrderBySexAscMinAgeYearsAsc(test.getId());
     }
 
     public Optional<LabService> findByCode(UUID hospitalId, String testCode) {
