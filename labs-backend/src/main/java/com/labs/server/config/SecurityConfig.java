@@ -49,6 +49,10 @@ public class SecurityConfig {
                 // when the container is up but a downstream config is missing
                 // (e.g. HMS_API_URL), so ops can curl it without a JWT.
                 .requestMatchers("/api/health").permitAll()
+                // Phase 5 — public report verification (QR target). Returns a
+                // minimal payload (initials + signatory + signed_at + accession);
+                // no PHI beyond what the patient already physically holds.
+                .requestMatchers("/api/report-verify/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll())
 

@@ -465,6 +465,71 @@ export const resultApi = {
     },
 };
 
+// ── Report templates (Phase 5 — per-hospital branding for PDF reports) ─
+export const reportTemplateApi = {
+    list: async () => {
+        const { data } = await api.get("/api/report-templates");
+        return data;
+    },
+    create: async (payload) => {
+        const { data } = await api.post("/api/report-templates", payload);
+        return data;
+    },
+    update: async (id, payload) => {
+        const { data } = await api.put(`/api/report-templates/${id}`, payload);
+        return data;
+    },
+    delete: async (id) => {
+        await api.delete(`/api/report-templates/${id}`);
+    },
+};
+
+// ── Report PDFs (Phase 5 — sign, render, version, cumulative) ──────────
+// PDF bytes are rendered on demand by the backend so every download
+// reflects current result state including amendments.
+export const reportPdfApi = {
+    sign: async (labOrderId, { cumulative = false } = {}) => {
+        const { data } = await api.post(
+            `/api/lab/${labOrderId}/report/sign`,
+            null,
+            { params: { cumulative } }
+        );
+        return data;
+    },
+    versions: async (labOrderId) => {
+        const { data } = await api.get(`/api/lab/${labOrderId}/report/versions`);
+        return data;
+    },
+    cumulative: async (labOrderId) => {
+        const { data } = await api.get(`/api/lab/${labOrderId}/cumulative`);
+        return data;
+    },
+    /** Direct browser-href to the latest signed PDF (bypasses axios so the
+     *  browser handles the application/pdf inline render). */
+    latestPdfUrl: (labOrderId) =>
+        `${API_BASE_URL}/api/lab/${labOrderId}/report.pdf`,
+    versionPdfUrl: (pdfId) =>
+        `${API_BASE_URL}/api/report-pdf/${pdfId}.pdf`,
+    revoke: async (pdfId, reason) => {
+        const { data } = await api.post(`/api/report-pdf/${pdfId}/revoke`, { reason });
+        return data;
+    },
+};
+
+// ── Public report verify (Phase 5 — no auth required) ──────────────────
+// Used by the public verification page rendered after a QR scan.
+// Uses the top-level axios import (NOT the `api` instance) so the dev
+// mock-auth Bearer header isn't attached — the verify endpoint is public
+// and we don't want to imply caller identity.
+export const reportVerifyApi = {
+    verify: async (token) => {
+        const { data } = await axios.get(
+            `${API_BASE_URL}/api/report-verify/${encodeURIComponent(token)}`
+        );
+        return data;
+    },
+};
+
 // ── Audit trail (Phase 0 — read-only viewer) ───────────────────────────
 export const auditApi = {
     list: async ({ entityType, entityId, from, to, page = 0, size = 50 } = {}) => {

@@ -16,6 +16,7 @@ import {
     LayoutGrid,
     TestTube,
     History,
+    FileSignature,
 } from "lucide-react";
 
 const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home };
@@ -45,6 +46,7 @@ const ADMIN_LINKS = [
 const SETTINGS_LINKS = [
     { label: "Reference Ranges", to: "/settings/reference-ranges", icon: Activity },
     { label: "Test Catalog", to: "/settings/test-catalog", icon: FlaskConical },
+    { label: "Report Templates", to: "/settings/report-templates", icon: FileSignature },
     { label: "Audit Trail", to: "/settings/audit", icon: History },
 ];
 

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Lab Report</title>
+    <style>
+        @page { size: A4; margin: 18mm 14mm 22mm 14mm;
+                @bottom-center {
+                    content: element(pageFooter);
+                }
+        }
+        body { font-family: "Helvetica","Arial",sans-serif; font-size: 10pt; color: #111; }
+        .accent-strip { height: 4px; background: var(--accent, #14b8a6); margin-bottom: 8px; }
+        .hdr { display: table; width: 100%; }
+        .hdr-left  { display: table-cell; vertical-align: middle; width: 60%; }
+        .hdr-right { display: table-cell; vertical-align: middle; width: 40%; text-align: right; font-size: 9pt; color: #555; }
+        .logo { max-height: 40px; max-width: 200px; }
+        .hospital-name { font-size: 14pt; font-weight: bold; color: #111; }
+        .patient-grid { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 8px; }
+        .patient-grid td { padding: 3px 6px; font-size: 9.5pt; }
+        .patient-grid td.k { color: #666; width: 18%; }
+        .patient-grid td.v { color: #000; font-weight: bold; }
+        h2.section { font-size: 11pt; color: #111; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin: 14px 0 6px; }
+        table.results { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+        table.results th, table.results td { border-bottom: 1px solid #eee; padding: 5px 6px; vertical-align: top; text-align: left; }
+        table.results th { background: #f6f7f8; font-size: 9pt; color: #444; text-transform: uppercase; letter-spacing: 0.03em; }
+        td.num { text-align: right; font-weight: bold; }
+        .flag-N { color: #16a34a; }
+        .flag-L, .flag-H  { color: #d97706; font-weight: bold; }
+        .flag-LL, .flag-HH, .flag-AA { color: #dc2626; font-weight: bold; }
+        .flag-A { color: #ea580c; font-weight: bold; }
+        .panic-banner { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 6px 8px; margin: 8px 0; font-size: 9.5pt; }
+        .trend { font-size: 8.5pt; color: #444; }
+        .trend strong { color: #000; }
+        .delta-up   { color: #b91c1c; }
+        .delta-down { color: #1d4ed8; }
+        .footer-block { font-size: 8.5pt; color: #555; margin-top: 18px; padding-top: 8px; border-top: 1px solid #ccc; }
+        .signatory { display: table; width: 100%; margin-top: 28px; }
+        .signatory .sig { display: table-cell; text-align: right; vertical-align: top; }
+        .signatory .sig img { max-height: 50px; max-width: 220px; }
+        .signatory .sig .name  { font-weight: bold; margin-top: 4px; }
+        .signatory .sig .small { font-size: 8.5pt; color: #555; }
+        .qr-block { float: left; margin-right: 12px; text-align: center; font-size: 7.5pt; color: #666; }
+        .qr-block img { width: 90px; height: 90px; }
+        .meta-row { font-size: 8pt; color: #777; margin-top: 4px; }
+        #pageFooter { position: running(pageFooter); font-size: 8pt; color: #888; text-align: center; }
+    </style>
+</head>
+<body th:with="accent=${template.accentColor != null ? template.accentColor : '#14b8a6'}">
+    <div id="pageFooter">
+        Report ID <span th:text="${pdf.id}">—</span> · Version <span th:text="${pdf.version}">1</span> ·
+        Signed <span th:text="${#temporals.format(pdf.signedAt, 'dd MMM yyyy HH:mm')}">—</span> ·
+        Page <span class="pagenum"></span> of <span class="pagecount"></span>
+    </div>
+
+    <div class="accent-strip" th:style="'background:' + ${accent}"></div>
+    <div class="hdr">
+        <div class="hdr-left">
+            <img th:if="${template.logoUrl}" class="logo" th:src="${template.logoUrl}" alt="logo"/>
+            <div class="hospital-name" th:text="${hospital.name}">Hospital Name</div>
+            <div th:if="${template.headerHtml}" th:utext="${template.headerHtml}"></div>
+        </div>
+        <div class="hdr-right">
+            <div><strong>LABORATORY REPORT</strong></div>
+            <div>Accession: <span th:text="${order.accessionNumber != null ? order.accessionNumber : '—'}">—</span></div>
+            <div>Reported: <span th:text="${#temporals.format(pdf.signedAt, 'dd MMM yyyy HH:mm')}">—</span></div>
+            <div th:if="${pdf.version > 1}" style="color: #b45309;">
+                AMENDED — version <span th:text="${pdf.version}">2</span>
+            </div>
+        </div>
+    </div>
+
+    <table class="patient-grid">
+        <tr>
+            <td class="k">Patient</td>
+            <td class="v" th:text="${patient.name}">—</td>
+            <td class="k">UHID</td>
+            <td class="v" th:text="${patient.uhid != null ? patient.uhid : '—'}">—</td>
+        </tr>
+        <tr>
+            <td class="k">Age / Sex</td>
+            <td class="v">
+                <span th:text="${patient.ageDisplay != null ? patient.ageDisplay : '—'}">—</span>
+                · <span th:text="${patient.sex != null ? patient.sex : '—'}">—</span>
+            </td>
+            <td class="k">Referring Dr.</td>
+            <td class="v" th:text="${order.referredByName != null ? order.referredByName : '—'}">—</td>
+        </tr>
+        <tr>
+            <td class="k">Collected</td>
+            <td class="v" th:text="${order.collectedAt != null ? #temporals.format(order.collectedAt, 'dd MMM yyyy HH:mm') : '—'}">—</td>
+            <td class="k">Order ID</td>
+            <td class="v">#<span th:text="${order.id}">—</span></td>
+        </tr>
+    </table>
+
+    <div class="panic-banner" th:if="${hasPanic}">
+        ⚠ One or more results are flagged PANIC (LL/HH/AA). Ordering physician was notified at
+        <span th:text="${panicCalledAt != null ? #temporals.format(panicCalledAt, 'dd MMM HH:mm') : 'time of release'}">time of release</span>.
+    </div>
+
+    <h2 class="section" th:text="${order.serviceName}">Investigation</h2>
+
+    <table class="results">
+        <thead>
+        <tr>
+            <th style="width: 32%;">Analyte</th>
+            <th style="width: 14%;">Value</th>
+            <th style="width: 8%;">Unit</th>
+            <th style="width: 8%;">Flag</th>
+            <th style="width: 20%;">Reference</th>
+            <th style="width: 18%;">Method / Δ vs prior</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${rows}">
+            <td>
+                <strong th:text="${r.analyteName}">—</strong>
+                <div th:if="${r.loincCode != null}" style="font-size: 8pt; color: #888;">
+                    LOINC <span th:text="${r.loincCode}">—</span>
+                </div>
+            </td>
+            <td class="num" th:text="${r.displayValue}">—</td>
+            <td th:text="${r.unit != null ? r.unit : ''}">—</td>
+            <td>
+                <span th:if="${r.abnormalFlag != null}"
+                      th:class="'flag-' + ${r.abnormalFlag}"
+                      th:text="${r.abnormalFlag}">N</span>
+                <span th:if="${r.abnormalFlag == null}">—</span>
+            </td>
+            <td th:text="${r.referenceDisplay != null ? r.referenceDisplay : '—'}">—</td>
+            <td class="trend">
+                <span th:if="${r.method != null}" th:text="${r.method}">—</span>
+                <div th:if="${r.delta != null}">
+                    Δ <span th:class="${r.deltaUp ? 'delta-up' : 'delta-down'}"
+                            th:text="${r.deltaDisplay}">+0.0</span>
+                    vs prior
+                </div>
+            </td>
+        </tr>
+        <tr th:if="${rows == null or rows.isEmpty()}">
+            <td colspan="6" style="text-align: center; color: #999; padding: 16px;">
+                No per-analyte results captured.
+                <span th:if="${legacyFindings != null}">See attached findings below.</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div th:if="${legacyFindings != null and !legacyFindings.isEmpty()}" style="margin-top: 12px;">
+        <h2 class="section">Findings</h2>
+        <pre style="white-space: pre-wrap; font-family: inherit; font-size: 10pt; margin: 0;"
+             th:text="${legacyFindings}">—</pre>
+    </div>
+
+    <div th:if="${legacyObservation != null and !legacyObservation.isEmpty()}" style="margin-top: 10px;">
+        <h2 class="section">Impression</h2>
+        <pre style="white-space: pre-wrap; font-family: inherit; font-size: 10pt; margin: 0;"
+             th:text="${legacyObservation}">—</pre>
+    </div>
+
+    <div th:if="${cumulative != null and !cumulative.isEmpty()}" style="margin-top: 12px;">
+        <h2 class="section">Previous results (cumulative)</h2>
+        <table class="results" th:each="series : ${cumulative}" style="margin-bottom: 8px;">
+            <thead>
+            <tr>
+                <th colspan="4">
+                    <span th:text="${series.analyteName}">Analyte</span>
+                    <span style="font-weight: normal; color: #888;"
+                          th:if="${series.unit != null}"
+                          th:text="' (' + ${series.unit} + ')'">—</span>
+                </th>
+            </tr>
+            <tr>
+                <th style="width: 25%;">Date</th>
+                <th style="width: 20%;">Value</th>
+                <th style="width: 15%;">Flag</th>
+                <th style="width: 40%;">Reference</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="pt : ${series.points}">
+                <td th:text="${pt.at != null ? #temporals.format(pt.at, 'dd MMM yyyy') : '—'}">—</td>
+                <td class="num" th:text="${pt.value}">—</td>
+                <td>
+                    <span th:if="${pt.abnormalFlag != null}"
+                          th:class="'flag-' + ${pt.abnormalFlag}"
+                          th:text="${pt.abnormalFlag}">N</span>
+                </td>
+                <td th:text="${series.referenceText != null ? series.referenceText : '—'}">—</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="signatory">
+        <div class="qr-block">
+            <img th:src="${qrDataUri}" alt="Verify QR"/>
+            <div>Verify online</div>
+        </div>
+        <div class="sig">
+            <img th:if="${template.signatureImageUrl}" th:src="${template.signatureImageUrl}" alt="signature"/>
+            <div class="name" th:text="${template.signatoryName != null ? template.signatoryName : 'Authorised Signatory'}">—</div>
+            <div class="small" th:text="${template.signatoryQualification != null ? template.signatoryQualification : ''}">—</div>
+            <div class="small" th:if="${template.signatoryRegistration != null}"
+                 th:text="'Reg. No. ' + ${template.signatoryRegistration}">—</div>
+            <div class="meta-row">
+                Signed by <span th:text="${pdf.signedByName}">—</span> at
+                <span th:text="${#temporals.format(pdf.signedAt, 'dd MMM yyyy HH:mm')}">—</span>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${template.footerHtml}" class="footer-block" th:utext="${template.footerHtml}"></div>
+    <div class="footer-block" style="text-align: center;">
+        *** End of Report ***
+    </div>
+</body>
+</html>

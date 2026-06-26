@@ -20,6 +20,8 @@ import LabWriteReportModal from "./LabWriteReportModal";
 import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
 import SpecimensModal from "@/components/modals/SpecimensModal";
+import ReportActionsModal from "@/components/modals/ReportActionsModal";
+import { FileSignature } from "lucide-react";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -48,6 +50,7 @@ function LabQueue() {
     const [collectPayment, setCollectPayment] = useState(null);
     const [markingCollected, setMarkingCollected] = useState(null);
     const [specimensFor, setSpecimensFor] = useState(null);
+    const [reportFor, setReportFor] = useState(null);
 
     const load = useCallback(async () => {
         if (!user?.hospitalId) return;
@@ -212,6 +215,7 @@ function LabQueue() {
                         loadingId={null}
                         onCollect={(o) => setCollectPayment(o)}
                         onSpecimens={(o) => setSpecimensFor(o)}
+                        onReport={(o) => setReportFor(o)}
                     />
                 </>
             )}
@@ -243,6 +247,12 @@ function LabQueue() {
                     onChanged={load}
                 />
             )}
+            {reportFor && (
+                <ReportActionsModal
+                    order={reportFor}
+                    onClose={() => setReportFor(null)}
+                />
+            )}
         </div>
     );
 }
@@ -260,6 +270,7 @@ function QueueSection({
     loadingId,
     onCollect,
     onSpecimens,
+    onReport,
     showCollectAction,
 }) {
     return (
@@ -337,6 +348,15 @@ function QueueSection({
                                             title="Specimens (Phase 1)"
                                         >
                                             <Beaker className="w-3 h-3" /> Specimens
+                                        </button>
+                                    )}
+                                    {onReport && (
+                                        <button
+                                            onClick={() => onReport(order)}
+                                            className="hms-rad-row__view-btn"
+                                            title="Sign / download report PDF (Phase 5)"
+                                        >
+                                            <FileSignature className="w-3 h-3" /> Report
                                         </button>
                                     )}
                                     {showCollectAction ? (

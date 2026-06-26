@@ -83,6 +83,48 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
+		<!-- Phase 5: report rendering.
+		     Thymeleaf renders the HTML template; OpenHTMLtoPDF (BSD,
+		     successor to Flying Saucer) converts XHTML+CSS to a real PDF
+		     via PDFBox. PDFs are rendered on-demand (no DB caching) so
+		     they always reflect current result state including amendments. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-pdfbox</artifactId>
+			<version>1.0.10</version>
+		</dependency>
+		<dependency>
+			<groupId>com.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-slf4j</artifactId>
+			<version>1.0.10</version>
+		</dependency>
+
+		<!-- ZXing — QR code on every report linking to the public
+		     verification portal (/api/report-verify/{token}). Apache 2.0. -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+
+		<!-- Jsoup — tolerant HTML5 parser used to coerce the Thymeleaf
+		     output into well-formed XHTML that OpenHTMLtoPDF can ingest.
+		     MIT. -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.18.3</version>
+		</dependency>
+
 		<!-- Jackson Hibernate6 — serializes JPA lazy proxies without ByteBuddy errors -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
