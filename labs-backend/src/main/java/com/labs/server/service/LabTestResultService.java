@@ -3,7 +3,7 @@ package com.labs.server.service;
 import com.labs.server.context.AuthContext;
 import com.labs.server.dto.*;
 import com.labs.server.entity.LabOrder;
-import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.entity.LabService;
 import com.labs.server.entity.LabTestResult;
 import com.labs.server.entity.ResultStatus;
 import com.labs.server.repository.LabOrderRepository;
@@ -28,12 +28,12 @@ import java.util.stream.Collectors;
  *   create  → PRELIMINARY      (tech entered a value, flagged but not signed)
  *   verify  → FINAL            (tech sign-off — value is releasable)
  *   authorise (orthogonal)     (pathologist sign-off; needed when
- *                               LabTestCatalog.requiresAuthorisation = true)
+ *                               LabService.requiresAuthorisation = true)
  *   amend   → new CORRECTED row pointing at original (original survives)
  *   cancel  → CANCELLED        (sample rejected after entry, etc.)
  *
  * On every create:
- *   1) Resolve metadata from {@link LabTestCatalog} when a row exists for
+ *   1) Resolve metadata from {@link LabService} when a row exists for
  *      (hospitalId, testCode) — unit, method, loinc, analyte name.
  *   2) Match a reference range via {@link LabReferenceRangeService} using
  *      the patient's sex/age and the optional specialState. Snapshot
@@ -53,7 +53,7 @@ public class LabTestResultService {
 
     private final LabTestResultRepository repository;
     private final LabOrderRepository orderRepository;
-    private final LabTestCatalogService catalogService;
+    private final LabCatalogService catalogService;
     private final LabReferenceRangeService referenceRangeService;
     private final AuditService auditService;
     private final ObjectProvider<AuthContext> authContextProvider;
@@ -94,11 +94,11 @@ public class LabTestResultService {
                 .orElseThrow(() -> new RuntimeException("Lab order not found: " + labOrderId));
         UUID hospitalId = order.getHospital().getId();
 
-        Optional<LabTestCatalog> catalog = catalogService.findByCode(hospitalId, req.getTestCode());
+        Optional<LabService> catalog = catalogService.findByCode(hospitalId, req.getTestCode());
         String analyteName = pickAnalyteName(req, catalog);
         String unit        = pickUnit(req, catalog);
         String method      = pickMethod(req, catalog);
-        String loinc       = catalog.map(LabTestCatalog::getLoincCode).orElse(null);
+        String loinc       = catalog.map(LabService::getLoincCode).orElse(null);
 
         // Reference range match — snapshot into the result so the flag is
         // stable even if the catalogue is edited later.
@@ -309,8 +309,8 @@ public class LabTestResultService {
 
         if (match.isEmpty()) {
             // Fallback to analyte display name (legacy reference_ranges keyed on free-text).
-            Optional<LabTestCatalog> catalog = catalogService.findByCode(order.getHospital().getId(), testCode);
-            String displayName = catalog.map(LabTestCatalog::getName).orElse(testCode);
+            Optional<LabService> catalog = catalogService.findByCode(order.getHospital().getId(), testCode);
+            String displayName = catalog.map(LabService::getName).orElse(testCode);
             match = referenceRangeService.match(order.getHospital().getId(), displayName, sex, ageYears, value, null);
         }
 
@@ -352,19 +352,19 @@ public class LabTestResultService {
         return "ANY";
     }
 
-    private String pickAnalyteName(CreateTestResultRequest req, Optional<LabTestCatalog> catalog) {
+    private String pickAnalyteName(CreateTestResultRequest req, Optional<LabService> catalog) {
         if (req.getAnalyteName() != null && !req.getAnalyteName().isBlank()) return req.getAnalyteName();
-        return catalog.map(LabTestCatalog::getName).orElse(req.getTestCode());
+        return catalog.map(LabService::getName).orElse(req.getTestCode());
     }
 
-    private String pickUnit(CreateTestResultRequest req, Optional<LabTestCatalog> catalog) {
+    private String pickUnit(CreateTestResultRequest req, Optional<LabService> catalog) {
         if (req.getUnit() != null && !req.getUnit().isBlank()) return req.getUnit();
-        return catalog.map(LabTestCatalog::getDefaultUnit).orElse(null);
+        return catalog.map(LabService::getDefaultUnit).orElse(null);
     }
 
-    private String pickMethod(CreateTestResultRequest req, Optional<LabTestCatalog> catalog) {
+    private String pickMethod(CreateTestResultRequest req, Optional<LabService> catalog) {
         if (req.getMethod() != null && !req.getMethod().isBlank()) return req.getMethod();
-        return catalog.map(LabTestCatalog::getDefaultMethod).orElse(null);
+        return catalog.map(LabService::getDefaultMethod).orElse(null);
     }
 
     private String resolveDisplayName(String passed) {

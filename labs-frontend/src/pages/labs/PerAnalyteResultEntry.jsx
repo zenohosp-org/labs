@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { resultApi, testCatalogApi } from "@/api/labsClient";
+import { resultApi, labServiceApi } from "@/api/labsClient";
 import { Alert, Badge, Button } from "@/components/ui";
 import AmendResultModal from "@/components/modals/AmendResultModal";
 
@@ -102,12 +102,12 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
         if (!user?.hospitalId) return;
         (async () => {
             try {
-                const c = await testCatalogApi.list(user.hospitalId, true);
+                const c = await labServiceApi.list(user.hospitalId, true);
                 setCatalog(c ?? []);
                 const panel = findPanel(c ?? [], order?.serviceName);
                 if (panel) {
                     try {
-                        const kids = await testCatalogApi.expandPanel(panel.testCode, user.hospitalId);
+                        const kids = await labServiceApi.expandPanel(panel.testCode, user.hospitalId);
                         setPanelChildren(kids ?? []);
                     } catch {
                         setPanelChildren([]);

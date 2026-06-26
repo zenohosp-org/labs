@@ -23,7 +23,7 @@ public class LabReferenceRangeService {
 
     private final LabReferenceRangeRepository repository;
     private final LabReferenceRangeSeeder seeder;   // separate bean — see seeder javadoc for the readOnly-tx rationale
-    private final com.labs.server.repository.LabTestCatalogRepository testCatalogRepository;
+    private final com.labs.server.repository.LabServiceRepository labServiceRepository;
 
     /**
      * Returns the catalogue for a hospital. Lazy-seeds the defaults the first
@@ -59,7 +59,7 @@ public class LabReferenceRangeService {
                 .effectiveFrom(req.getEffectiveFrom())
                 .effectiveTo(req.getEffectiveTo())
                 .sourceCitation(req.getSourceCitation())
-                .labTestId(req.getLabTestId())
+                .labServiceId(req.getLabServiceId())
                 .isActive(req.getIsActive() != null ? req.getIsActive() : Boolean.TRUE)
                 .build();
         return repository.save(row);
@@ -86,7 +86,7 @@ public class LabReferenceRangeService {
         row.setEffectiveFrom(req.getEffectiveFrom());
         row.setEffectiveTo(req.getEffectiveTo());
         row.setSourceCitation(req.getSourceCitation());
-        row.setLabTestId(req.getLabTestId());
+        row.setLabServiceId(req.getLabServiceId());
         if (req.getIsActive() != null) row.setIsActive(req.getIsActive());
         return repository.save(row);
     }
@@ -98,10 +98,10 @@ public class LabReferenceRangeService {
      * caller can still override any field explicitly.
      */
     private void applyCatalogueDenorm(UUID hospitalId, LabReferenceRangeRequest req) {
-        if (req.getLabTestId() == null) return;
-        testCatalogRepository.findById(req.getLabTestId()).ifPresent(test -> {
+        if (req.getLabServiceId() == null) return;
+        labServiceRepository.findById(req.getLabServiceId()).ifPresent(test -> {
             if (!hospitalId.equals(test.getHospitalId())) {
-                throw new RuntimeException("labTestId does not belong to this hospital");
+                throw new RuntimeException("labServiceId does not belong to this hospital");
             }
             if (isBlank(req.getTestName())) req.setTestName(test.getName());
             if (isBlank(req.getCategory()) && test.getCategory() != null) req.setCategory(test.getCategory());

@@ -20,6 +20,7 @@ import NewOrderModal from "./NewOrderModal";
 import WriteReportModal from "./WriteReportModal";
 import CollectPaymentModal from "./CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
+import StatusTimeline from "@/components/StatusTimeline";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -76,7 +77,23 @@ function RadiologyQueue() {
         }
     };
 
+    // Phase 7 — start the modality run (PENDING_SCAN → IN_PROGRESS)
+    const handleMarkStarted = async (order) => {
+        setMarkingScanned(order.id);
+        setActionMenu(null);
+        try {
+            await radiologyApi.markStarted(order.id);
+            notify("Scan started — moved to In Progress", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to start scan", "error");
+        } finally {
+            setMarkingScanned(null);
+        }
+    };
+
     const pending = orders.filter((o) => o.status === "PENDING_SCAN");
+    const inProgress = orders.filter((o) => o.status === "IN_PROGRESS");   // Phase 7
     const awaiting = orders.filter((o) => o.status === "AWAITING_REPORT");
 
     const applyFilters = (list) => {
@@ -96,6 +113,7 @@ function RadiologyQueue() {
     };
 
     const filteredPending = applyFilters(pending);
+    const filteredInProgress = applyFilters(inProgress);   // Phase 7
     const filteredAwaiting = applyFilters(awaiting);
 
     return (
@@ -182,19 +200,35 @@ function RadiologyQueue() {
                 <>
                     <QueueSection
                         title="Imaging Queue (Ready for Scan)"
-                        subtitle="Orders waiting for the imaging procedure to be performed"
+                        subtitle="Click Start Scan to begin the modality run — or Mark Scanned to record a completed walk-up scan in one step"
                         colorMod="is-amber"
                         orders={filteredPending}
                         emptyText="No pending scans"
                         emptySubtext="New orders will appear here"
-                        actionLabel="Mark Scanned"
-                        actionMod="is-amber"
-                        onAction={handleMarkScanned}
+                        actionLabel="Start Scan"
+                        actionMod="is-indigo"
+                        onAction={handleMarkStarted}
                         loadingId={markingScanned}
                         actionMenu={actionMenu}
                         setActionMenu={setActionMenu}
                         onCollect={(o) => setCollectPayment(o)}
                         showScanAction
+                    />
+                    {/* Phase 7 — IN_PROGRESS: scan started, awaiting completion */}
+                    <QueueSection
+                        title="In Progress"
+                        subtitle="Modality run started — mark scanned when the study is complete"
+                        colorMod="is-emerald"
+                        orders={filteredInProgress}
+                        emptyText="No scans in progress"
+                        emptySubtext="Started scans appear here until marked complete"
+                        actionLabel="Mark Scanned"
+                        actionMod="is-emerald"
+                        onAction={handleMarkScanned}
+                        loadingId={markingScanned}
+                        actionMenu={actionMenu}
+                        setActionMenu={setActionMenu}
+                        onCollect={(o) => setCollectPayment(o)}
                     />
                     <QueueSection
                         title="Awaiting Reports"
@@ -285,12 +319,16 @@ function QueueSection({
                         const PIcon = pmeta.icon;
                         return (
                             <div key={order.id} className="hms-rad-row" onClick={(e) => e.stopPropagation()}>
-                                <div className="hms-rad-patient">
-                                    <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
-                                    <div>
-                                        <p className="hms-rad-patient__name">{order.patientName}</p>
-                                        <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                <div className="hms-rad-patient" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
+                                        <div>
+                                            <p className="hms-rad-patient__name">{order.patientName}</p>
+                                            <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                        </div>
                                     </div>
+                                    {/* Phase 7 — HIPAA-grade lifecycle pills with timestamps */}
+                                    <StatusTimeline order={order} kind="radiology" compact />
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__svc-name">{order.serviceName}</p>

@@ -72,11 +72,43 @@ public class RadiologyOrder {
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;
 
+    // ── HIPAA-grade actor/timestamp triples (V13). Same shape as LabOrder.
+
     @Column(name = "scanned_at")
     private LocalDateTime scannedAt;
 
+    @Column(name = "scanned_by_user_id")
+    private UUID scannedByUserId;
+
+    @Column(name = "scanned_by_name", length = 200)
+    private String scannedByName;
+
+    @Column(name = "received_at")
+    private LocalDateTime receivedAt;
+
+    @Column(name = "received_by_user_id")
+    private UUID receivedByUserId;
+
+    @Column(name = "received_by_name", length = 200)
+    private String receivedByName;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "started_by_user_id")
+    private UUID startedByUserId;
+
+    @Column(name = "started_by_name", length = 200)
+    private String startedByName;
+
     @Column(name = "reported_at")
     private LocalDateTime reportedAt;
+
+    @Column(name = "reported_by_user_id")
+    private UUID reportedByUserId;
+
+    @Column(name = "reported_by_name", length = 200)
+    private String reportedByName;
 
     @Column(columnDefinition = "TEXT")
     private String findings;

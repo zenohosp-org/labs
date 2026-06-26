@@ -72,6 +72,11 @@ export const radiologyApi = {
         const { data } = await api.patch(`/api/radiology/${id}/scan`);
         return data;
     },
+    /** Phase 7 — PENDING_SCAN → IN_PROGRESS. Stamps started_at + actor server-side. */
+    markStarted: async (id) => {
+        const { data } = await api.patch(`/api/radiology/${id}/start`);
+        return data;
+    },
     generateReport: async (id, findings, observation) => {
         const { data } = await api.patch(`/api/radiology/${id}/report`, { findings, observation });
         return data;
@@ -105,6 +110,16 @@ export const labApi = {
     },
     markCollected: async (id) => {
         const { data } = await api.patch(`/api/lab/${id}/collect`);
+        return data;
+    },
+    /** Phase 7 — lab receiving desk takes custody. Stamps received_at + actor; status stays AWAITING_REPORT. */
+    markReceived: async (id) => {
+        const { data } = await api.patch(`/api/lab/${id}/receive`);
+        return data;
+    },
+    /** Phase 7 — AWAITING_REPORT → IN_PROGRESS (tech ran the analyser). Stamps started_at + actor. */
+    markStarted: async (id) => {
+        const { data } = await api.patch(`/api/lab/${id}/start`);
         return data;
     },
     generateReport: async (id, findings, observation) => {
@@ -384,15 +399,15 @@ export const rejectionReasonApi = {
 // Lazy-seeded on first GET with ~47 Indian-lab analytes across 7 panels.
 // Phase 3 — also the source of truth pickers consume from when adding
 // tests to ranges, lab packages, and health checkup packages.
-export const testCatalogApi = {
+export const labServiceApi = {
     list: async (hospitalId, activeOnly = true) => {
-        const { data } = await api.get("/api/lab-test-catalog", {
+        const { data } = await api.get("/api/lab-services", {
             params: { hospitalId, activeOnly },
         });
         return data;
     },
     expandPanel: async (panelCode, hospitalId) => {
-        const { data } = await api.get(`/api/lab-test-catalog/panel/${panelCode}`, {
+        const { data } = await api.get(`/api/lab-services/panel/${panelCode}`, {
             params: { hospitalId },
         });
         return data;
@@ -402,24 +417,24 @@ export const testCatalogApi = {
         if (!q || !q.trim()) return [];
         const params = { q, limit };
         if (hospitalId) params.hospitalId = hospitalId;
-        const { data } = await api.get("/api/lab-test-catalog/search", { params });
+        const { data } = await api.get("/api/lab-services/search", { params });
         return data;
     },
     /** Phase 3 — ranges that belong to a specific test row. */
     rangesFor: async (testId) => {
-        const { data } = await api.get(`/api/lab-test-catalog/${testId}/ranges`);
+        const { data } = await api.get(`/api/lab-services/${testId}/ranges`);
         return data;
     },
     upsert: async (payload) => {
-        const { data } = await api.post("/api/lab-test-catalog", payload);
+        const { data } = await api.post("/api/lab-services", payload);
         return data;
     },
     toggle: async (id) => {
-        const { data } = await api.patch(`/api/lab-test-catalog/${id}/toggle`);
+        const { data } = await api.patch(`/api/lab-services/${id}/toggle`);
         return data;
     },
     delete: async (id) => {
-        await api.delete(`/api/lab-test-catalog/${id}`);
+        await api.delete(`/api/lab-services/${id}`);
     },
 };
 

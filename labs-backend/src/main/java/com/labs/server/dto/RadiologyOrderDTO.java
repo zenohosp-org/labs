@@ -30,8 +30,20 @@ public class RadiologyOrderDTO {
     private LocalDate scheduledDate;
     private String billNo;
     private BigDecimal price;
+    // ── HIPAA timestamp+actor triples (Phase 7 / V13) ────────────────────
     private LocalDateTime scannedAt;
+    private UUID scannedByUserId;
+    private String scannedByName;
+    private LocalDateTime receivedAt;
+    private UUID receivedByUserId;
+    private String receivedByName;
+    private LocalDateTime startedAt;
+    private UUID startedByUserId;
+    private String startedByName;
     private LocalDateTime reportedAt;
+    private UUID reportedByUserId;
+    private String reportedByName;
+
     private String findings;
     private String observation;
     private String reportId;

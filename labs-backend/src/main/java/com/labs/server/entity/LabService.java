@@ -8,30 +8,38 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Per-hospital authoritative list of testable analytes and panels.
+ * Per-hospital authoritative list of testable analytes and panels —
+ * the labs-side parallel of HMS's {@code hospital_services}.
  *
- * Opt-in for existing orders (they still carry free-text service_name) — but
- * the catalogue is required for Phase 2's per-analyte result entry to work
- * with proper LOINC coding, default units, and the panel → child-analyte
+ * Phase 7 (V12) renamed the underlying table from {@code lab_test_catalog}
+ * → {@code lab_services} so the naming mirrors hospital_services on the
+ * HMS side. The hospital_service_id FK column still loosely points at the
+ * billing row in HMS (no DB FK — HMS owns that table); labs adds the
+ * analytical metadata (LOINC, container, fasting, method, panel
+ * relationships) that doesn't belong in a billing catalogue.
+ *
+ * Opt-in for existing orders (they still carry free-text service_name)
+ * — but the catalogue is required for per-analyte result entry to work
+ * with proper LOINC coding, default units, and panel → child-analyte
  * expansion.
  *
  * A panel row has {@code isPanel=true}; its child analytes are separate
- * catalogue rows with {@code parentPanelCode} pointing back at the panel's
- * {@code testCode}. The expansion is done in service-layer code, not at
- * the JPA level — keeping the panel/child relationship loose so a child
- * analyte can belong to multiple panels (HDL is part of both Lipid Profile
- * and Cardiac Risk Panel).
+ * catalogue rows with {@code parentPanelCode} pointing back at the
+ * panel's {@code testCode}. The expansion is done in service-layer code,
+ * not at the JPA level — keeping the panel/child relationship loose so a
+ * child analyte can belong to multiple panels (HDL is part of both Lipid
+ * Profile and Cardiac Risk Panel).
  */
 @Entity
-@Table(name = "lab_test_catalog",
+@Table(name = "lab_services",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_lab_test_catalog_hospital_code",
+                name = "uq_lab_services_hospital_code",
                 columnNames = {"hospital_id", "test_code"}))
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LabTestCatalog {
+public class LabService {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -114,9 +122,9 @@ public class LabTestCatalog {
     private Integer displayOrder;
 
     /**
-     * Phase 3 — optional loose pointer to the HMS hospital_services row that
-     * bills for this test. No FK constraint (HMS owns the table). UI surfaces
-     * this so price changes on the HMS side stay in sync.
+     * Phase 3 — optional loose pointer to the HMS hospital_services row
+     * that bills for this test. No FK constraint (HMS owns the table).
+     * UI surfaces this so price changes on the HMS side stay in sync.
      */
     @Column(name = "hospital_service_id")
     private UUID hospitalServiceId;

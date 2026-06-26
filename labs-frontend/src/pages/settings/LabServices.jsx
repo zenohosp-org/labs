@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { testCatalogApi } from "@/api/labsClient";
+import { labServiceApi } from "@/api/labsClient";
 import {
     Alert,
     Badge,
@@ -103,7 +103,7 @@ const empty = {
  * per-analyte result entry in LabWriteReportModal consumes the same
  * catalogue.
  */
-export default function TestCatalog() {
+export default function LabServices() {
     const { user } = useAuth();
     const { notify } = useNotification();
 
@@ -120,7 +120,7 @@ export default function TestCatalog() {
         if (!user?.hospitalId) return;
         setLoading(true);
         try {
-            const data = await testCatalogApi.list(user.hospitalId, false);
+            const data = await labServiceApi.list(user.hospitalId, false);
             setRows(data ?? []);
         } catch {
             notify("Failed to load test catalogue", "error");
@@ -223,7 +223,7 @@ export default function TestCatalog() {
             active: form.active,
         };
         try {
-            await testCatalogApi.upsert(payload);
+            await labServiceApi.upsert(payload);
             notify(form.id ? "Test updated" : "Test added", "success");
             setEditorOpen(false);
             await load();
@@ -234,7 +234,7 @@ export default function TestCatalog() {
 
     const handleToggle = async (id) => {
         try {
-            await testCatalogApi.toggle(id);
+            await labServiceApi.toggle(id);
             notify("Status updated", "success");
             await load();
         } catch {
@@ -245,7 +245,7 @@ export default function TestCatalog() {
     const handleDelete = async () => {
         if (!confirmDelete) return;
         try {
-            await testCatalogApi.delete(confirmDelete.id);
+            await labServiceApi.delete(confirmDelete.id);
             notify("Test deleted", "success");
             setConfirmDelete(null);
             await load();

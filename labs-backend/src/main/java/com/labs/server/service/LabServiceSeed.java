@@ -1,6 +1,6 @@
 package com.labs.server.service;
 
-import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.entity.LabService;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * Seed of common Indian-lab analytes with LOINC codes + workflow defaults.
  *
- * Used by {@link LabTestCatalogService#seedFor(UUID)} the first time a
+ * Used by {@link LabCatalogService#seedFor(UUID)} the first time a
  * hospital lists its catalogue. Mirrors {@link LabReferenceRangeSeed} so
  * the pattern is consistent across labs catalogue seeds.
  *
@@ -19,9 +19,9 @@ import java.util.UUID;
  * tail (microbiology, special chem, immunology) through the admin UI.
  */
 @Component
-public class LabTestCatalogSeed {
+public class LabServiceSeed {
 
-    public List<LabTestCatalog> defaults(UUID hospitalId) {
+    public List<LabService> defaults(UUID hospitalId) {
         return List.of(
             // ───────── Panels (parent rows) ─────────
             panel(hospitalId, "CBC",    "Complete Blood Count",      "HAEMATOLOGY",   "BLOOD", "EDTA",     350, 10),
@@ -86,9 +86,9 @@ public class LabTestCatalogSeed {
         );
     }
 
-    private LabTestCatalog panel(UUID hospitalId, String code, String name, String category,
+    private LabService panel(UUID hospitalId, String code, String name, String category,
                                   String specimenKind, String container, int price, int displayOrder) {
-        return LabTestCatalog.builder()
+        return LabService.builder()
                 .hospitalId(hospitalId)
                 .testCode(code)
                 .name(name)
@@ -107,9 +107,9 @@ public class LabTestCatalogSeed {
                 .build();
     }
 
-    private LabTestCatalog analyte(UUID hospitalId, String code, String name, String loinc, String parentPanel,
+    private LabService analyte(UUID hospitalId, String code, String name, String loinc, String parentPanel,
                                     String category, String unit, String method, int displayOrder) {
-        return LabTestCatalog.builder()
+        return LabService.builder()
                 .hospitalId(hospitalId)
                 .testCode(code)
                 .loincCode(loinc)

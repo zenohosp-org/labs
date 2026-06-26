@@ -1,9 +1,9 @@
 package com.labs.server.controller;
 
-import com.labs.server.dto.CreateTestCatalogRequest;
-import com.labs.server.dto.LabTestCatalogDTO;
+import com.labs.server.dto.CreateLabServiceRequest;
+import com.labs.server.dto.LabServiceDTO;
 import com.labs.server.security.JwtUtil;
-import com.labs.server.service.LabTestCatalogService;
+import com.labs.server.service.LabCatalogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,21 +13,25 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Per-hospital LOINC-coded test catalogue. Lazy-seeded on first GET with a
- * curated Indian-lab default set (CBC, LFT, RFT, Lipid, Thyroid, Diabetes,
- * Urine — ~7 panels + ~40 analytes). Mirrors the lazy-seed convention used by
- * {@link LabReferenceRangeController}.
+ * Per-hospital LOINC-coded labs service catalogue (the labs-side parallel
+ * of HMS hospital_services, in the lab_services table). Lazy-seeded on
+ * first GET with a curated Indian-lab default set (CBC, LFT, RFT, Lipid,
+ * Thyroid, Diabetes, Urine — ~7 panels + ~40 analytes). Mirrors the
+ * lazy-seed convention used by {@link LabReferenceRangeController}.
+ *
+ * Pre-Phase-7 path /api/lab-test-catalog is kept as a redirect alias for
+ * one release cycle ({@link LabTestCatalogAliasController}).
  */
 @RestController
-@RequestMapping("/api/lab-test-catalog")
+@RequestMapping("/api/lab-services")
 @RequiredArgsConstructor
-public class LabTestCatalogController {
+public class LabServiceController {
 
-    private final LabTestCatalogService service;
+    private final LabCatalogService service;
     private final JwtUtil jwtUtil;
 
     @GetMapping
-    public ResponseEntity<List<LabTestCatalogDTO>> list(
+    public ResponseEntity<List<LabServiceDTO>> list(
             @RequestParam(required = false) UUID hospitalId,
             @RequestParam(required = false, defaultValue = "true") boolean activeOnly,
             Authentication auth) {
@@ -36,7 +40,7 @@ public class LabTestCatalogController {
 
     /** Expand a panel code (e.g. "CBC") to its child analytes. */
     @GetMapping("/panel/{panelCode}")
-    public ResponseEntity<List<LabTestCatalogDTO>> expand(
+    public ResponseEntity<List<LabServiceDTO>> expand(
             @PathVariable String panelCode,
             @RequestParam(required = false) UUID hospitalId,
             Authentication auth) {
@@ -49,7 +53,7 @@ public class LabTestCatalogController {
      * / LOINC contains the query.
      */
     @GetMapping("/search")
-    public ResponseEntity<List<LabTestCatalogDTO>> search(
+    public ResponseEntity<List<LabServiceDTO>> search(
             @RequestParam String q,
             @RequestParam(required = false, defaultValue = "20") int limit,
             @RequestParam(required = false) UUID hospitalId,
@@ -66,14 +70,14 @@ public class LabTestCatalogController {
     }
 
     @PostMapping
-    public ResponseEntity<LabTestCatalogDTO> upsert(
-            @RequestBody CreateTestCatalogRequest req,
+    public ResponseEntity<LabServiceDTO> upsert(
+            @RequestBody CreateLabServiceRequest req,
             Authentication auth) {
         return ResponseEntity.ok(service.upsert(resolveHospitalId(auth, null), req));
     }
 
     @PatchMapping("/{id}/toggle")
-    public ResponseEntity<LabTestCatalogDTO> toggle(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<LabServiceDTO> toggle(@PathVariable Long id, Authentication auth) {
         return ResponseEntity.ok(service.toggle(resolveHospitalId(auth, null), id));
     }
 

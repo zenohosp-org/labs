@@ -12,7 +12,7 @@ import java.util.UUID;
  * Most fields optional — at minimum the tech supplies {@code testCode} and
  * either {@code valueNumeric} or {@code valueText}. The service:
  *  - resolves {@code analyteName}, {@code loincCode}, {@code unit}, {@code method}
- *    from the {@link com.labs.server.entity.LabTestCatalog} row when present;
+ *    from the {@link com.labs.server.entity.LabService} row when present;
  *  - matches a reference range and snapshots low/high into the row;
  *  - derives {@code abnormalFlag} and {@code panicFlag} from the snapshot;
  *  - looks up the patient's prior FINAL value for {@code deltaFromPrevious}.
@@ -24,7 +24,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateTestResultRequest {
-    /** Required. Must exist in lab_test_catalog for the order's hospital, or be a free-text code. */
+    /** Required. Must exist in lab_services for the order's hospital, or be a free-text code. */
     private String testCode;
 
     /** Optional override when the catalogue display name doesn't suit (e.g. local language). */

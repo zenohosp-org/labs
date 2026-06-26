@@ -42,7 +42,7 @@ const ENTITY_OPTIONS = [
     { value: "LabOrder", label: "LabOrder" },
     { value: "LabSpecimen", label: "LabSpecimen" },
     { value: "LabTestResult", label: "LabTestResult" },
-    { value: "LabTestCatalog", label: "LabTestCatalog" },
+    { value: "LabService", label: "LabService" },
 ];
 
 /**

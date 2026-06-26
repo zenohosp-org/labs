@@ -1,5 +1,6 @@
 package com.labs.server.service;
 
+import com.labs.server.context.AuthContext;
 import com.labs.server.dto.CreateLabOrderRequest;
 import com.labs.server.dto.LabOrderDTO;
 import com.labs.server.dto.LabReportRequest;
@@ -15,11 +16,14 @@ import com.labs.server.repository.LabOrderRepository;
 import com.labs.server.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -58,6 +62,9 @@ public class LabService {
 
     // Phase 0 — append-only audit trail.
     private final AuditService auditService;
+
+    // Phase 7 — HIPAA actor capture (request-scoped, so injected via provider).
+    private final ObjectProvider<AuthContext> authContextProvider;
 
     public List<LabOrderDTO> getOrders(UUID hospitalId, String status) {
         if (status != null && !status.isBlank()) {
@@ -176,8 +183,13 @@ public class LabService {
             throw new RuntimeException("Order is not in PENDING_COLLECTION state");
         }
         LabStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+
         order.setStatus(LabStatus.AWAITING_REPORT);
-        order.setCollectedAt(java.time.LocalDateTime.now());
+        order.setCollectedAt(now);
+        order.setCollectedByUserId(actor.userId);
+        order.setCollectedByName(actor.name);
         LabOrder saved = orderRepository.save(order);
 
         // Phase 1c — auto-create a default specimen row if the frontend hasn't
@@ -185,7 +197,7 @@ public class LabService {
         // legacy "click Collect" flow working while the new specimen-entry UI
         // is being rolled out. No-op for orders that already have specimens.
         try {
-            labSpecimenService.autoCreateForOrderIfMissing(saved, saved.getCreatedByName(), null);
+            labSpecimenService.autoCreateForOrderIfMissing(saved, actor.name, actor.userId);
         } catch (Exception e) {
             LoggerFactory.getLogger(LabService.class)
                     .warn("Auto-specimen creation failed for lab order {}: {}", saved.getId(), e.getMessage());
@@ -193,9 +205,71 @@ public class LabService {
 
         auditService.record("LabOrder", saved.getId().toString(), "STATUS_CHANGE",
                 saved.getHospital().getId(),
-                java.util.Map.of("status", previous.name()),
-                java.util.Map.of("status", LabStatus.AWAITING_REPORT.name(),
-                        "collectedAt", saved.getCollectedAt().toString()));
+                Map.of("status", previous.name()),
+                Map.of("status", LabStatus.AWAITING_REPORT.name(),
+                        "collectedAt", now.toString(),
+                        "collectedByName", actor.name != null ? actor.name : ""));
+        return toDTO(saved);
+    }
+
+    /**
+     * Phase 7 — lab receiving desk takes custody of the sample. Stamps
+     * received_at + actor on the lab_orders row (denormalised projection
+     * of the specimen's own chain-of-custody for fast "awaiting receive"
+     * queries). Status stays AWAITING_REPORT — receive is observational,
+     * not a status transition.
+     */
+    @Transactional
+    public LabOrderDTO markReceived(Long id) {
+        LabOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != LabStatus.AWAITING_REPORT) {
+            throw new RuntimeException("Order is not in AWAITING_REPORT state");
+        }
+        if (order.getReceivedAt() != null) {
+            throw new RuntimeException("Order already marked received");
+        }
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setReceivedAt(now);
+        order.setReceivedByUserId(actor.userId);
+        order.setReceivedByName(actor.name);
+        LabOrder saved = orderRepository.save(order);
+
+        auditService.record("LabOrder", saved.getId().toString(), "RECEIVE",
+                saved.getHospital().getId(),
+                null,
+                Map.of("receivedAt", now.toString(),
+                        "receivedByName", actor.name != null ? actor.name : ""));
+        return toDTO(saved);
+    }
+
+    /**
+     * Phase 7 — tech moves order from AWAITING_REPORT to IN_PROGRESS
+     * (analyser run started). New HIPAA-grade timestamp + actor stamp.
+     */
+    @Transactional
+    public LabOrderDTO markStarted(Long id) {
+        LabOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != LabStatus.AWAITING_REPORT) {
+            throw new RuntimeException("Order is not in AWAITING_REPORT state — current: " + order.getStatus());
+        }
+        LabStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(LabStatus.IN_PROGRESS);
+        order.setStartedAt(now);
+        order.setStartedByUserId(actor.userId);
+        order.setStartedByName(actor.name);
+        LabOrder saved = orderRepository.save(order);
+
+        auditService.record("LabOrder", saved.getId().toString(), "START",
+                saved.getHospital().getId(),
+                Map.of("status", previous.name()),
+                Map.of("status", LabStatus.IN_PROGRESS.name(),
+                        "startedAt", now.toString(),
+                        "startedByName", actor.name != null ? actor.name : ""));
         return toDTO(saved);
     }
 
@@ -203,15 +277,22 @@ public class LabService {
     public LabOrderDTO generateReport(Long id, LabReportRequest req) {
         LabOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        if (order.getStatus() != LabStatus.AWAITING_REPORT) {
-            throw new RuntimeException("Order is not in AWAITING_REPORT state");
+        // Phase 7 — accept either AWAITING_REPORT (legacy direct-report flow)
+        // or IN_PROGRESS (new lifecycle, tech ran the analyser first).
+        if (order.getStatus() != LabStatus.AWAITING_REPORT
+                && order.getStatus() != LabStatus.IN_PROGRESS) {
+            throw new RuntimeException("Order is not in AWAITING_REPORT or IN_PROGRESS state — current: " + order.getStatus());
         }
         LabStatus previous = order.getStatus();
         String previousFindings = order.getFindings();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
         order.setStatus(LabStatus.REPORT_GENERATED);
         order.setFindings(req.getFindings());
         order.setObservation(req.getObservation());
-        order.setReportedAt(java.time.LocalDateTime.now());
+        order.setReportedAt(now);
+        order.setReportedByUserId(actor.userId);
+        order.setReportedByName(actor.name);
         order.setReportId(generateReportId());
         LabOrder saved = orderRepository.save(order);
 
@@ -244,6 +325,30 @@ public class LabService {
         return sb.toString();
     }
 
+    /**
+     * Phase 7 — resolves {userId, displayName} from the current JWT for
+     * HIPAA actor stamping. Falls back to ('System', null) when no JWT is
+     * on the call (e.g. internal scheduler).
+     */
+    private Actor resolveActor() {
+        try {
+            AuthContext ctx = authContextProvider.getIfAvailable();
+            if (ctx != null) {
+                UUID uid = null;
+                try { uid = ctx.getUserId() != null ? UUID.fromString(ctx.getUserId()) : null; }
+                catch (IllegalArgumentException ignored) { }
+                String name = ctx.getEmail();
+                if (name == null) name = "System";
+                return new Actor(uid, name);
+            }
+        } catch (Exception ignored) {
+            // Auth context not request-scoped here — happens for async paths
+        }
+        return new Actor(null, "System");
+    }
+
+    private record Actor(UUID userId, String name) { }
+
     private LabOrderDTO toDTO(LabOrder o) {
         String patientName = o.getPatient().getFirstName()
                 + (o.getPatient().getLastName() != null ? " " + o.getPatient().getLastName() : "");
@@ -268,7 +373,17 @@ public class LabService {
                 .price(o.getPrice())
                 .gstRate(o.getGstRate())
                 .collectedAt(o.getCollectedAt())
+                .collectedByUserId(o.getCollectedByUserId())
+                .collectedByName(o.getCollectedByName())
+                .receivedAt(o.getReceivedAt())
+                .receivedByUserId(o.getReceivedByUserId())
+                .receivedByName(o.getReceivedByName())
+                .startedAt(o.getStartedAt())
+                .startedByUserId(o.getStartedByUserId())
+                .startedByName(o.getStartedByName())
                 .reportedAt(o.getReportedAt())
+                .reportedByUserId(o.getReportedByUserId())
+                .reportedByName(o.getReportedByName())
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())

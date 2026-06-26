@@ -34,7 +34,7 @@ const CATEGORY_CHIP_CLS = {
   CUSTOM: "is-cat-custom",
 };
 
-const EMPTY_TEST = { testName: "", testCategory: "GENERAL", normalRange: "", mandatory: true, labTestId: null };
+const EMPTY_TEST = { testName: "", testCategory: "GENERAL", normalRange: "", mandatory: true, labServiceId: null };
 
 const EMPTY_FORM = {
   name: "", description: "", category: "GENERAL", targetGender: "ANY",
@@ -144,7 +144,7 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                       <div className="is-span-2">
                         <TestPicker
                           value={t.testName}
-                          labTestId={t.labTestId}
+                          labServiceId={t.labServiceId}
                           onChange={(v) => updateTest(i, "testName", v)}
                           onPick={(picked) => {
                             setForm((f) => {
@@ -152,7 +152,7 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                               tests[i] = {
                                 ...tests[i],
                                 testName: picked.name,
-                                labTestId: picked.labTestId,
+                                labServiceId: picked.labServiceId,
                                 testCategory: picked.category || tests[i].testCategory,
                                 normalRange: tests[i].normalRange || picked.defaultUnit
                                   ? tests[i].normalRange
@@ -161,7 +161,7 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                               return { ...f, tests };
                             });
                           }}
-                          onClear={() => updateTest(i, "labTestId", null)}
+                          onClear={() => updateTest(i, "labServiceId", null)}
                           placeholder="Test name (e.g. Complete Blood Count)"
                         />
                       </div>

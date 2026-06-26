@@ -1,38 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Check, Loader2, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { testCatalogApi } from "@/api/labsClient";
+import { labServiceApi } from "@/api/labsClient";
 
 /**
  * Reusable picker that resolves a free-text test entry to a row in
  * lab_test_catalog. Used in three places:
  *
  *   - RangeEditorModal (Settings → Reference Ranges): picking the test a
- *     band belongs to → sets labTestId + auto-fills testName/unit/loinc
+ *     band belongs to → sets labServiceId + auto-fills testName/unit/loinc
  *   - LabPackages item editor: picking the investigation in a lab package
- *     → sets labTestId on the item + denormalised investigation name
+ *     → sets labServiceId on the item + denormalised investigation name
  *   - PackageManager test editor (health checkups): picking a test in a
- *     health package → sets labTestId on the row
+ *     health package → sets labServiceId on the row
  *
  * Behaviour:
  *   - Two-way bound: caller passes `value` (string = current display name)
- *     and `labTestId` (number | null). User typing updates `value`; clicking
- *     a suggestion calls onPick({ labTestId, name, testCode, defaultUnit,
+ *     and `labServiceId` (number | null). User typing updates `value`; clicking
+ *     a suggestion calls onPick({ labServiceId, name, testCode, defaultUnit,
  *     loincCode, category }) and the caller decides which of those fields
  *     to denormalise into its row.
  *   - Free-text fallback: if the user types something that doesn't match,
- *     they can still save — labTestId stays null and the legacy free-text
+ *     they can still save — labServiceId stays null and the legacy free-text
  *     column carries the value.
  *   - 250 ms debounced search; closes on outside click / Escape; arrow keys
  *     navigate, Enter selects.
  */
 export default function TestPicker({
     value,
-    labTestId,
+    labServiceId,
     onChange,
     onPick,
     onClear,
-    placeholder = "Search test catalogue…",
+    placeholder = "Search lab services…",
     className = "",
     autoFocus = false,
 }) {
@@ -55,7 +55,7 @@ export default function TestPicker({
         setLoading(true);
         const h = setTimeout(async () => {
             try {
-                const data = await testCatalogApi.search(q, {
+                const data = await labServiceApi.search(q, {
                     hospitalId: user?.hospitalId,
                     limit: 20,
                 });
@@ -92,11 +92,11 @@ export default function TestPicker({
         };
     }, [open]);
 
-    const linked = labTestId != null;
+    const linked = labServiceId != null;
 
     const pick = (row) => {
         onPick?.({
-            labTestId: row.id,
+            labServiceId: row.id,
             name: row.name,
             testCode: row.testCode,
             defaultUnit: row.defaultUnit,

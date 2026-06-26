@@ -327,7 +327,7 @@ public class ReportPdfService {
     private String deriveDiscipline(LabOrder order) {
         // best-effort: order doesn't carry discipline directly; the catalogue
         // resolution falls back to the default template anyway. Reserved for
-        // a future enrichment that joins lab_test_catalog by service_name.
+        // a future enrichment that joins lab_services by service_name.
         return null;
     }
 

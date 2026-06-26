@@ -40,10 +40,10 @@ public class HealthPackageTest {
     private boolean mandatory = true;
 
     /**
-     * Phase 3 — FK to lab_test_catalog.id. Set when added via the catalogue
+     * Phase 3 — FK to lab_services.id. Set when added via the catalogue
      * picker; NULL on legacy or unmatched rows. ON DELETE SET NULL preserves
      * the health-package row when the source test is deleted.
      */
-    @Column(name = "lab_test_id")
-    private Long labTestId;
+    @Column(name = "lab_service_id")
+    private Long labServiceId;
 }

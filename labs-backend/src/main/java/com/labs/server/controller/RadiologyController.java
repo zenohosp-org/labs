@@ -72,6 +72,15 @@ public class RadiologyController {
         return ResponseEntity.ok(radiologyService.markScanned(id));
     }
 
+    /**
+     * Phase 7 — tech started the modality run.
+     * PENDING_SCAN → IN_PROGRESS, stamps started_at + actor.
+     */
+    @PatchMapping("/{id}/start")
+    public ResponseEntity<RadiologyOrderDTO> markStarted(@PathVariable Long id) {
+        return ResponseEntity.ok(radiologyService.markStarted(id));
+    }
+
     @PatchMapping("/{id}/report")
     public ResponseEntity<RadiologyOrderDTO> generateReport(
             @PathVariable Long id,

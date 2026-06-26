@@ -1,6 +1,6 @@
 package com.labs.server.repository;
 
-import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.entity.LabService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,25 +12,25 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface LabTestCatalogRepository extends JpaRepository<LabTestCatalog, Long> {
+public interface LabServiceRepository extends JpaRepository<LabService, Long> {
 
     long countByHospitalId(UUID hospitalId);
 
-    List<LabTestCatalog> findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
+    List<LabService> findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
 
-    List<LabTestCatalog> findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
+    List<LabService> findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
 
-    List<LabTestCatalog> findByHospitalIdAndParentPanelCodeOrderByDisplayOrderAsc(UUID hospitalId, String parentPanelCode);
+    List<LabService> findByHospitalIdAndParentPanelCodeOrderByDisplayOrderAsc(UUID hospitalId, String parentPanelCode);
 
-    Optional<LabTestCatalog> findByHospitalIdAndTestCode(UUID hospitalId, String testCode);
+    Optional<LabService> findByHospitalIdAndTestCode(UUID hospitalId, String testCode);
 
     /**
-     * Search by name / test_code / aliases — used by the package + range
-     * editor pickers. Active rows only; case-insensitive substring match.
-     * Caller passes Pageable for top-N suggestions.
+     * Search by name / test_code / aliases / LOINC — used by the package +
+     * range editor pickers. Active rows only; case-insensitive substring
+     * match. Caller passes Pageable for top-N suggestions.
      */
     @Query("""
-        SELECT t FROM LabTestCatalog t
+        SELECT t FROM LabService t
         WHERE t.hospitalId = :hospitalId
           AND t.active = true
           AND (
@@ -46,7 +46,7 @@ public interface LabTestCatalogRepository extends JpaRepository<LabTestCatalog, 
           t.isPanel DESC,
           t.name ASC
     """)
-    List<LabTestCatalog> searchByHospital(@Param("hospitalId") UUID hospitalId,
-                                          @Param("q") String q,
-                                          Pageable page);
+    List<LabService> searchByHospital(@Param("hospitalId") UUID hospitalId,
+                                       @Param("q") String q,
+                                       Pageable page);
 }

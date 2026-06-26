@@ -1,7 +1,7 @@
 package com.labs.server.service;
 
-import com.labs.server.entity.LabTestCatalog;
-import com.labs.server.repository.LabTestCatalogRepository;
+import com.labs.server.entity.LabService;
+import com.labs.server.repository.LabServiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.UUID;
  * Separate bean for the test-catalogue lazy seed so the @Transactional proxy
  * is actually applied.
  *
- * Why this isn't inline in {@link LabTestCatalogService}: that service is
+ * Why this isn't inline in {@link LabCatalogService}: that service is
  * {@code @Transactional(readOnly = true)} at class level. A
  * {@code this.seedFor(...)} call from {@code list()} bypasses Spring's
  * AOP proxy and runs in the readOnly transaction — Hibernate sets
@@ -30,10 +30,10 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LabTestCatalogSeeder {
+public class LabServiceSeeder {
 
-    private final LabTestCatalogRepository repository;
-    private final LabTestCatalogSeed defaults;
+    private final LabServiceRepository repository;
+    private final LabServiceSeed defaults;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void seedFor(UUID hospitalId) {
@@ -42,7 +42,7 @@ public class LabTestCatalogSeeder {
         if (repository.countByHospitalId(hospitalId) > 0) {
             return;
         }
-        List<LabTestCatalog> rows = defaults.defaults(hospitalId);
+        List<LabService> rows = defaults.defaults(hospitalId);
         log.info("Seeding {} default lab test catalogue rows for hospital {}", rows.size(), hospitalId);
         repository.saveAll(rows);
     }

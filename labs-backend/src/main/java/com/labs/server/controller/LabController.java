@@ -69,6 +69,24 @@ public class LabController {
         return ResponseEntity.ok(labService.markCollected(id));
     }
 
+    /**
+     * Phase 7 — sample received at the lab receiving desk.
+     * Stamps received_at + actor; status stays AWAITING_REPORT.
+     */
+    @PatchMapping("/{id}/receive")
+    public ResponseEntity<LabOrderDTO> markReceived(@PathVariable Long id) {
+        return ResponseEntity.ok(labService.markReceived(id));
+    }
+
+    /**
+     * Phase 7 — tech started the analyser run.
+     * AWAITING_REPORT → IN_PROGRESS, stamps started_at + actor.
+     */
+    @PatchMapping("/{id}/start")
+    public ResponseEntity<LabOrderDTO> markStarted(@PathVariable Long id) {
+        return ResponseEntity.ok(labService.markStarted(id));
+    }
+
     @PatchMapping("/{id}/report")
     public ResponseEntity<LabOrderDTO> generateReport(
             @PathVariable Long id,

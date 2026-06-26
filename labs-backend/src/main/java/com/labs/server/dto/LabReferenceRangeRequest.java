@@ -32,6 +32,6 @@ public class LabReferenceRangeRequest {
     private String sourceCitation;
 
     // ── Phase 3 link (V9) ───────────────────────────────────────
-    /** FK to lab_test_catalog.id. When set, the test_name + unit auto-fill from the catalogue row. */
-    private Long labTestId;
+    /** FK to lab_services.id. When set, the test_name + unit auto-fill from the catalogue row. */
+    private Long labServiceId;
 }

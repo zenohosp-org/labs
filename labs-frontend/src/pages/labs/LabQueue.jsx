@@ -21,7 +21,8 @@ import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
 import SpecimensModal from "@/components/modals/SpecimensModal";
 import ReportActionsModal from "@/components/modals/ReportActionsModal";
-import { FileSignature } from "lucide-react";
+import StatusTimeline from "@/components/StatusTimeline";
+import { FileSignature, Inbox, Activity } from "lucide-react";
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -49,6 +50,7 @@ function LabQueue() {
     const [writeReport, setWriteReport] = useState(null);
     const [collectPayment, setCollectPayment] = useState(null);
     const [markingCollected, setMarkingCollected] = useState(null);
+    const [actingOn, setActingOn] = useState(null);   // Phase 7 — receive / start
     const [specimensFor, setSpecimensFor] = useState(null);
     const [reportFor, setReportFor] = useState(null);
 
@@ -86,8 +88,36 @@ function LabQueue() {
         }
     };
 
+    // Phase 7 — receive (custody at lab desk) and start (analyser run).
+    const handleMarkReceived = async (order) => {
+        setActingOn(order.id);
+        try {
+            await labApi.markReceived(order.id);
+            notify("Sample received at lab — actor + timestamp stamped (HIPAA)", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to mark received", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
+    const handleMarkStarted = async (order) => {
+        setActingOn(order.id);
+        try {
+            await labApi.markStarted(order.id);
+            notify("Test started — moved to In Progress", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to start test", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
     const pending = orders.filter((o) => o.status === "PENDING_COLLECTION");
     const awaiting = orders.filter((o) => o.status === "AWAITING_REPORT");
+    const inProgress = orders.filter((o) => o.status === "IN_PROGRESS");   // Phase 7
 
     const applyFilters = (list) => {
         let result = list;
@@ -107,6 +137,7 @@ function LabQueue() {
 
     const filteredPending = applyFilters(pending);
     const filteredAwaiting = applyFilters(awaiting);
+    const filteredInProgress = applyFilters(inProgress);   // Phase 7
 
     return (
         <div className="hms-rad-page">
@@ -204,13 +235,29 @@ function LabQueue() {
                     />
                     <QueueSection
                         title="Awaiting Reports"
-                        subtitle="Sample processed — pathologist findings pending"
+                        subtitle="Sample processed — receive at lab, then start the analyser"
                         colorMod="is-slate"
                         orders={filteredAwaiting}
                         emptyText="No samples awaiting reports"
                         emptySubtext="Collected samples will appear here"
+                        actionLabel="Start Test"
+                        actionMod="is-indigo"
+                        onAction={handleMarkStarted}
+                        loadingId={actingOn}
+                        onReceive={handleMarkReceived}
+                        onCollect={(o) => setCollectPayment(o)}
+                        onSpecimens={(o) => setSpecimensFor(o)}
+                        onReport={(o) => setReportFor(o)}
+                    />
+                    <QueueSection
+                        title="In Progress"
+                        subtitle="Analyser run started — write the report when results are in"
+                        colorMod="is-emerald"
+                        orders={filteredInProgress}
+                        emptyText="No tests in progress"
+                        emptySubtext="Started tests appear here until report is written"
                         actionLabel="Write Report"
-                        actionMod="is-slate"
+                        actionMod="is-emerald"
                         onAction={(o) => setWriteReport(o)}
                         loadingId={null}
                         onCollect={(o) => setCollectPayment(o)}
@@ -271,6 +318,7 @@ function QueueSection({
     onCollect,
     onSpecimens,
     onReport,
+    onReceive,       // Phase 7 — receive button shown when order is AWAITING_REPORT and not yet receivedAt
     showCollectAction,
 }) {
     return (
@@ -297,17 +345,21 @@ function QueueSection({
                         const PIcon = pmeta.icon;
                         return (
                             <div key={order.id} className="hms-rad-row">
-                                <div className="hms-rad-patient">
-                                    <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
-                                    <div>
-                                        <p className="hms-rad-patient__name">{order.patientName}</p>
-                                        <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
-                                        {order.accessionNumber && (
-                                            <p className="hms-rad-patient__uhid" title="Lab-wide accession (Phase 1)">
-                                                ACC: <code>{order.accessionNumber}</code>
-                                            </p>
-                                        )}
+                                <div className="hms-rad-patient" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
+                                        <div>
+                                            <p className="hms-rad-patient__name">{order.patientName}</p>
+                                            <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                            {order.accessionNumber && (
+                                                <p className="hms-rad-patient__uhid" title="Lab-wide accession (Phase 1)">
+                                                    ACC: <code>{order.accessionNumber}</code>
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
+                                    {/* Phase 7 — HIPAA-grade lifecycle pills with timestamps */}
+                                    <StatusTimeline order={order} kind="lab" compact />
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__svc-name">{order.serviceName}</p>
@@ -357,6 +409,17 @@ function QueueSection({
                                             title="Sign / download report PDF (Phase 5)"
                                         >
                                             <FileSignature className="w-3 h-3" /> Report
+                                        </button>
+                                    )}
+                                    {/* Phase 7 — Receive: only when AWAITING_REPORT and not yet receivedAt */}
+                                    {onReceive && order.status === "AWAITING_REPORT" && !order.receivedAt && (
+                                        <button
+                                            onClick={() => onReceive(order)}
+                                            disabled={loadingId === order.id}
+                                            className="hms-rad-row__view-btn"
+                                            title="Mark sample received at lab — stamps received_at + actor"
+                                        >
+                                            <Inbox className="w-3 h-3" /> Receive
                                         </button>
                                     )}
                                     {showCollectAction ? (

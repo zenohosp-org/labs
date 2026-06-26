@@ -12,7 +12,7 @@ import RadiologyReportView from "@/pages/radiology/RadiologyReportView";
 import PackageManager from "@/pages/checkups/PackageManager";
 import Services from "@/pages/services/Services";
 import ReferenceRanges from "@/pages/settings/ReferenceRanges";
-import TestCatalog from "@/pages/settings/TestCatalog";
+import LabServices from "@/pages/settings/LabServices";
 import AuditTrail from "@/pages/settings/AuditTrail";
 import ReportTemplates from "@/pages/settings/ReportTemplates";
 import ReportVerify from "@/pages/ReportVerify";
@@ -75,7 +75,9 @@ function App() {
                             {/* Settings */}
                             <Route path="settings" element={<Navigate to="/settings/reference-ranges" replace />} />
                             <Route path="settings/reference-ranges" element={<ReferenceRanges />} />
-                            <Route path="settings/test-catalog" element={<TestCatalog />} />
+                            <Route path="settings/lab-services" element={<LabServices />} />
+                            {/* Phase 7 rename — old bookmarked URL redirects to the new path */}
+                            <Route path="settings/test-catalog" element={<Navigate to="/settings/lab-services" replace />} />
                             <Route path="settings/report-templates" element={<ReportTemplates />} />
                             <Route path="settings/audit" element={<AuditTrail />} />
                         </Route>

@@ -15,20 +15,20 @@ public interface LabReferenceRangeRepository extends JpaRepository<LabReferenceR
     long countByHospitalId(UUID hospitalId);
 
     // ── Phase 3 — FK lookups ─────────────────────────────────────────────
-    List<LabReferenceRange> findByLabTestIdOrderBySexAscMinAgeYearsAsc(Long labTestId);
+    List<LabReferenceRange> findByLabTestIdOrderBySexAscMinAgeYearsAsc(Long labServiceId);
 
-    long countByLabTestId(Long labTestId);
+    long countByLabTestId(Long labServiceId);
 
     /**
      * Aggregate range counts per lab_test_id for the hospital — used by the
      * Test Catalog list view to show "N ranges" per row in one query.
-     * Returns Object[]{labTestId (Long), count (Long)}.
+     * Returns Object[]{labServiceId (Long), count (Long)}.
      */
     @Query("""
-        SELECT r.labTestId, COUNT(r)
+        SELECT r.labServiceId, COUNT(r)
         FROM LabReferenceRange r
-        WHERE r.hospitalId = :hospitalId AND r.labTestId IS NOT NULL
-        GROUP BY r.labTestId
+        WHERE r.hospitalId = :hospitalId AND r.labServiceId IS NOT NULL
+        GROUP BY r.labServiceId
     """)
     List<Object[]> countByHospitalGroupedByLabTestId(@Param("hospitalId") UUID hospitalId);
 

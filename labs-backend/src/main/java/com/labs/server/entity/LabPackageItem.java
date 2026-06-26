@@ -40,11 +40,11 @@ public class LabPackageItem {
     private Integer displayOrder;
 
     /**
-     * Phase 3 — FK to lab_test_catalog.id. Set when the package was authored
+     * Phase 3 — FK to lab_services.id. Set when the package was authored
      * via the test picker; NULL on legacy / unmatched rows. ON DELETE SET NULL
      * at the DB level so deleting the source test preserves the package row
      * (investigation_name keeps the historical text).
      */
-    @Column(name = "lab_test_id")
-    private Long labTestId;
+    @Column(name = "lab_service_id")
+    private Long labServiceId;
 }

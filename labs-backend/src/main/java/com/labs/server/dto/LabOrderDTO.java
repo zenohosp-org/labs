@@ -31,8 +31,20 @@ public class LabOrderDTO {
     private String sampleType;
     private BigDecimal price;
     private BigDecimal gstRate;
+    // ── HIPAA timestamp+actor triples (Phase 7 / V13) ────────────────────
     private LocalDateTime collectedAt;
+    private UUID collectedByUserId;
+    private String collectedByName;
+    private LocalDateTime receivedAt;
+    private UUID receivedByUserId;
+    private String receivedByName;
+    private LocalDateTime startedAt;
+    private UUID startedByUserId;
+    private String startedByName;
     private LocalDateTime reportedAt;
+    private UUID reportedByUserId;
+    private String reportedByName;
+
     private String findings;
     private String observation;
     private String reportId;

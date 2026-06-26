@@ -1,11 +1,11 @@
 package com.labs.server.service;
 
-import com.labs.server.dto.CreateTestCatalogRequest;
-import com.labs.server.dto.LabTestCatalogDTO;
+import com.labs.server.dto.CreateLabServiceRequest;
+import com.labs.server.dto.LabServiceDTO;
 import com.labs.server.entity.LabReferenceRange;
-import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.entity.LabService;
 import com.labs.server.repository.LabReferenceRangeRepository;
-import com.labs.server.repository.LabTestCatalogRepository;
+import com.labs.server.repository.LabServiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -30,25 +30,25 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class LabTestCatalogService {
+public class LabCatalogService {
 
-    private final LabTestCatalogRepository repository;
+    private final LabServiceRepository repository;
     private final LabReferenceRangeRepository rangeRepository;
-    private final LabTestCatalogSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
+    private final LabServiceSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
     private final AuditService auditService;
 
-    public List<LabTestCatalogDTO> list(UUID hospitalId, boolean activeOnly) {
+    public List<LabServiceDTO> list(UUID hospitalId, boolean activeOnly) {
         if (repository.countByHospitalId(hospitalId) == 0) {
             // Goes through the Spring AOP proxy because seeder is a DIFFERENT
             // bean — so seeder.seedFor's @Transactional(REQUIRES_NEW) actually
             // opens a writable transaction and the inserts flush.
             seeder.seedFor(hospitalId);
         }
-        List<LabTestCatalog> rows = activeOnly
+        List<LabService> rows = activeOnly
                 ? repository.findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId)
                 : repository.findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId);
 
-        // Single query → map of labTestId → range count. Avoids N+1 when the
+        // Single query → map of labServiceId → range count. Avoids N+1 when the
         // catalogue list page renders "N ranges" per row.
         Map<Long, Long> rangeCounts = new HashMap<>();
         for (Object[] row : rangeRepository.countByHospitalGroupedByLabTestId(hospitalId)) {
@@ -63,7 +63,7 @@ public class LabTestCatalogService {
      * Phase 3 — fuzzy search over name / test_code / aliases / LOINC. Used by
      * the package + range editor pickers. Active rows only, top {@code limit}.
      */
-    public List<LabTestCatalogDTO> search(UUID hospitalId, String q, int limit) {
+    public List<LabServiceDTO> search(UUID hospitalId, String q, int limit) {
         if (q == null || q.isBlank()) return List.of();
         int cappedLimit = Math.min(Math.max(limit, 1), 50);
         return repository.searchByHospital(hospitalId, q.trim(), PageRequest.of(0, cappedLimit))
@@ -74,24 +74,24 @@ public class LabTestCatalogService {
      * Phase 3 — list ranges that belong to a test. Tenant-checked against the
      * caller's hospital so a forged id can't expose cross-tenant data.
      */
-    public List<LabReferenceRange> rangesFor(UUID hospitalId, Long labTestId) {
-        LabTestCatalog test = loadForTenant(hospitalId, labTestId);
+    public List<LabReferenceRange> rangesFor(UUID hospitalId, Long labServiceId) {
+        LabService test = loadForTenant(hospitalId, labServiceId);
         return rangeRepository.findByLabTestIdOrderBySexAscMinAgeYearsAsc(test.getId());
     }
 
-    public Optional<LabTestCatalog> findByCode(UUID hospitalId, String testCode) {
+    public Optional<LabService> findByCode(UUID hospitalId, String testCode) {
         if (hospitalId == null || testCode == null) return Optional.empty();
         return repository.findByHospitalIdAndTestCode(hospitalId, testCode);
     }
 
     /** Child analytes for a panel (CBC → 12 analytes). Empty when not a panel. */
-    public List<LabTestCatalogDTO> expandPanel(UUID hospitalId, String panelCode) {
+    public List<LabServiceDTO> expandPanel(UUID hospitalId, String panelCode) {
         return repository.findByHospitalIdAndParentPanelCodeOrderByDisplayOrderAsc(hospitalId, panelCode)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     @Transactional
-    public LabTestCatalogDTO upsert(UUID hospitalId, CreateTestCatalogRequest req) {
+    public LabServiceDTO upsert(UUID hospitalId, CreateLabServiceRequest req) {
         if (req.getTestCode() == null || req.getTestCode().isBlank()) {
             throw new RuntimeException("testCode is required");
         }
@@ -99,41 +99,41 @@ public class LabTestCatalogService {
             throw new RuntimeException("name is required");
         }
 
-        Optional<LabTestCatalog> existing = repository.findByHospitalIdAndTestCode(hospitalId, req.getTestCode());
-        LabTestCatalog row = existing.orElseGet(() ->
-                LabTestCatalog.builder().hospitalId(hospitalId).testCode(req.getTestCode()).build());
+        Optional<LabService> existing = repository.findByHospitalIdAndTestCode(hospitalId, req.getTestCode());
+        LabService row = existing.orElseGet(() ->
+                LabService.builder().hospitalId(hospitalId).testCode(req.getTestCode()).build());
 
-        LabTestCatalog before = existing.map(this::clone).orElse(null);
+        LabService before = existing.map(this::clone).orElse(null);
         copyInto(row, req);
-        LabTestCatalog saved = repository.save(row);
+        LabService saved = repository.save(row);
 
-        auditService.record("LabTestCatalog", saved.getId().toString(),
+        auditService.record("LabService", saved.getId().toString(),
                 existing.isPresent() ? "UPDATE" : "CREATE",
                 hospitalId, before, saved);
         return toDTO(saved);
     }
 
     @Transactional
-    public LabTestCatalogDTO toggle(UUID hospitalId, Long id) {
-        LabTestCatalog row = loadForTenant(hospitalId, id);
-        LabTestCatalog before = clone(row);
+    public LabServiceDTO toggle(UUID hospitalId, Long id) {
+        LabService row = loadForTenant(hospitalId, id);
+        LabService before = clone(row);
         row.setActive(!Boolean.TRUE.equals(row.getActive()));
-        LabTestCatalog saved = repository.save(row);
-        auditService.record("LabTestCatalog", saved.getId().toString(), "TOGGLE",
+        LabService saved = repository.save(row);
+        auditService.record("LabService", saved.getId().toString(), "TOGGLE",
                 hospitalId, before, saved);
         return toDTO(saved);
     }
 
     @Transactional
     public void delete(UUID hospitalId, Long id) {
-        LabTestCatalog row = loadForTenant(hospitalId, id);
+        LabService row = loadForTenant(hospitalId, id);
         repository.delete(row);
-        auditService.record("LabTestCatalog", String.valueOf(id), "DELETE",
+        auditService.record("LabService", String.valueOf(id), "DELETE",
                 hospitalId, row, null);
     }
 
-    private LabTestCatalog loadForTenant(UUID hospitalId, Long id) {
-        LabTestCatalog row = repository.findById(id)
+    private LabService loadForTenant(UUID hospitalId, Long id) {
+        LabService row = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Test catalog row not found: " + id));
         if (!hospitalId.equals(row.getHospitalId())) {
             throw new RuntimeException("Test catalog row does not belong to this hospital");
@@ -141,7 +141,7 @@ public class LabTestCatalogService {
         return row;
     }
 
-    private void copyInto(LabTestCatalog row, CreateTestCatalogRequest r) {
+    private void copyInto(LabService row, CreateLabServiceRequest r) {
         row.setLoincCode(r.getLoincCode());
         row.setName(r.getName());
         row.setAliases(r.getAliases());
@@ -167,8 +167,8 @@ public class LabTestCatalogService {
         if (r.getActive() != null) row.setActive(r.getActive());
     }
 
-    private LabTestCatalog clone(LabTestCatalog r) {
-        return LabTestCatalog.builder()
+    private LabService clone(LabService r) {
+        return LabService.builder()
                 .id(r.getId())
                 .hospitalId(r.getHospitalId())
                 .testCode(r.getTestCode())
@@ -200,12 +200,12 @@ public class LabTestCatalogService {
                 .build();
     }
 
-    public LabTestCatalogDTO toDTO(LabTestCatalog r) {
+    public LabServiceDTO toDTO(LabService r) {
         return toDTOWithRangeCount(r, null);
     }
 
-    private LabTestCatalogDTO toDTOWithRangeCount(LabTestCatalog r, Long rangeCount) {
-        return LabTestCatalogDTO.builder()
+    private LabServiceDTO toDTOWithRangeCount(LabService r, Long rangeCount) {
+        return LabServiceDTO.builder()
                 .id(r.getId())
                 .hospitalId(r.getHospitalId())
                 .testCode(r.getTestCode())

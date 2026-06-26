@@ -1,5 +1,6 @@
 package com.labs.server.service;
 
+import com.labs.server.context.AuthContext;
 import com.labs.server.dto.CreateRadiologyOrderRequest;
 import com.labs.server.dto.RadiologyOrderDTO;
 import com.labs.server.dto.RadiologyReportRequest;
@@ -15,12 +16,14 @@ import com.labs.server.repository.PatientRepository;
 import com.labs.server.repository.RadiologyOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -49,6 +52,10 @@ public class RadiologyService {
 
     @Lazy
     private final RadiologyBillingService billingService;
+
+    // Phase 7 — audit + HIPAA actor capture
+    private final AuditService auditService;
+    private final ObjectProvider<AuthContext> authContextProvider;
 
     public List<RadiologyOrderDTO> getOrders(UUID hospitalId, String status) {
         List<RadiologyOrder> rows;
@@ -136,12 +143,57 @@ public class RadiologyService {
     public RadiologyOrderDTO markScanned(Long id) {
         RadiologyOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        if (order.getStatus() != RadiologyStatus.PENDING_SCAN) {
-            throw new RuntimeException("Order is not in PENDING_SCAN state");
+        // Phase 7 — accept PENDING_SCAN (legacy direct-mark flow) or
+        // IN_PROGRESS (new lifecycle, tech started the modality run first).
+        if (order.getStatus() != RadiologyStatus.PENDING_SCAN
+                && order.getStatus() != RadiologyStatus.IN_PROGRESS) {
+            throw new RuntimeException("Order is not in PENDING_SCAN or IN_PROGRESS state — current: " + order.getStatus());
         }
+        RadiologyStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
         order.setStatus(RadiologyStatus.AWAITING_REPORT);
-        order.setScannedAt(LocalDateTime.now());
-        return toDTO(orderRepository.save(order));
+        order.setScannedAt(now);
+        order.setScannedByUserId(actor.userId);
+        order.setScannedByName(actor.name);
+        RadiologyOrder saved = orderRepository.save(order);
+
+        auditService.record("RadiologyOrder", saved.getId().toString(), "STATUS_CHANGE",
+                saved.getHospital().getId(),
+                Map.of("status", previous.name()),
+                Map.of("status", RadiologyStatus.AWAITING_REPORT.name(),
+                        "scannedAt", now.toString(),
+                        "scannedByName", actor.name != null ? actor.name : ""));
+        return toDTO(saved);
+    }
+
+    /**
+     * Phase 7 — tech started the modality run.
+     * PENDING_SCAN → IN_PROGRESS, stamps started_at + actor.
+     */
+    @Transactional
+    public RadiologyOrderDTO markStarted(Long id) {
+        RadiologyOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != RadiologyStatus.PENDING_SCAN) {
+            throw new RuntimeException("Order is not in PENDING_SCAN state — current: " + order.getStatus());
+        }
+        RadiologyStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(RadiologyStatus.IN_PROGRESS);
+        order.setStartedAt(now);
+        order.setStartedByUserId(actor.userId);
+        order.setStartedByName(actor.name);
+        RadiologyOrder saved = orderRepository.save(order);
+
+        auditService.record("RadiologyOrder", saved.getId().toString(), "START",
+                saved.getHospital().getId(),
+                Map.of("status", previous.name()),
+                Map.of("status", RadiologyStatus.IN_PROGRESS.name(),
+                        "startedAt", now.toString(),
+                        "startedByName", actor.name != null ? actor.name : ""));
+        return toDTO(saved);
     }
 
     @Transactional
@@ -149,12 +201,17 @@ public class RadiologyService {
         RadiologyOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         if (order.getStatus() != RadiologyStatus.AWAITING_REPORT) {
-            throw new RuntimeException("Order is not in AWAITING_REPORT state");
+            throw new RuntimeException("Order is not in AWAITING_REPORT state — current: " + order.getStatus());
         }
+        RadiologyStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
         order.setStatus(RadiologyStatus.REPORT_GENERATED);
         order.setFindings(req.getFindings());
         order.setObservation(req.getObservation());
-        order.setReportedAt(LocalDateTime.now());
+        order.setReportedAt(now);
+        order.setReportedByUserId(actor.userId);
+        order.setReportedByName(actor.name);
         order.setReportId(generateReportId());
         RadiologyOrder saved = orderRepository.save(order);
 
@@ -164,8 +221,37 @@ public class RadiologyService {
             LoggerFactory.getLogger(RadiologyService.class)
                     .warn("Auto-bill failed for radiology order {}: {}", saved.getId(), e.getMessage());
         }
+
+        auditService.record("RadiologyOrder", saved.getId().toString(), "REPORT_GENERATED",
+                saved.getHospital().getId(),
+                Map.of("status", previous.name()),
+                Map.of("status", RadiologyStatus.REPORT_GENERATED.name(),
+                        "reportedAt", now.toString(),
+                        "reportedByName", actor.name != null ? actor.name : "",
+                        "reportId", saved.getReportId()));
         return toDTO(saved);
     }
+
+    /**
+     * Phase 7 — resolves {userId, displayName} from the current JWT for
+     * HIPAA actor stamping.
+     */
+    private Actor resolveActor() {
+        try {
+            AuthContext ctx = authContextProvider.getIfAvailable();
+            if (ctx != null) {
+                UUID uid = null;
+                try { uid = ctx.getUserId() != null ? UUID.fromString(ctx.getUserId()) : null; }
+                catch (IllegalArgumentException ignored) { }
+                String name = ctx.getEmail();
+                if (name == null) name = "System";
+                return new Actor(uid, name);
+            }
+        } catch (Exception ignored) { }
+        return new Actor(null, "System");
+    }
+
+    private record Actor(UUID userId, String name) { }
 
     private String generateReportId() {
         StringBuilder sb = new StringBuilder();
@@ -234,7 +320,17 @@ public class RadiologyService {
                 .billNo(o.getBillNo())
                 .price(o.getPrice())
                 .scannedAt(o.getScannedAt())
+                .scannedByUserId(o.getScannedByUserId())
+                .scannedByName(o.getScannedByName())
+                .receivedAt(o.getReceivedAt())
+                .receivedByUserId(o.getReceivedByUserId())
+                .receivedByName(o.getReceivedByName())
+                .startedAt(o.getStartedAt())
+                .startedByUserId(o.getStartedByUserId())
+                .startedByName(o.getStartedByName())
                 .reportedAt(o.getReportedAt())
+                .reportedByUserId(o.getReportedByUserId())
+                .reportedByName(o.getReportedByName())
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())

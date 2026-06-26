@@ -14,7 +14,7 @@ import java.util.UUID;
  * Companion to {@link LabReferenceRangeService} that owns the lazy seed in
  * its own bean so the Spring AOP proxy is real.
  *
- * Same reasoning as {@link LabTestCatalogSeeder}: the parent service is
+ * Same reasoning as {@link LabServiceSeeder}: the parent service is
  * {@code @Transactional(readOnly=true)} and {@code this.seedFor(...)}
  * bypasses the proxy, so Hibernate runs the inserts in a readOnly tx with
  * FlushMode.MANUAL and silently drops them. Moving the seed to a separate

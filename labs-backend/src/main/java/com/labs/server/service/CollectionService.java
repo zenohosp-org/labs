@@ -11,11 +11,11 @@ import com.labs.server.entity.LabOrder;
 import com.labs.server.entity.LabPriority;
 import com.labs.server.entity.LabSpecimen;
 import com.labs.server.entity.LabStatus;
-import com.labs.server.entity.LabTestCatalog;
+import com.labs.server.entity.LabService;
 import com.labs.server.entity.Patient;
 import com.labs.server.repository.LabOrderRepository;
 import com.labs.server.repository.LabSpecimenRepository;
-import com.labs.server.repository.LabTestCatalogRepository;
+import com.labs.server.repository.LabServiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -82,7 +82,7 @@ public class CollectionService {
 
     private final LabOrderRepository orderRepository;
     private final LabSpecimenRepository specimenRepository;
-    private final LabTestCatalogRepository catalogRepository;
+    private final LabServiceRepository catalogRepository;
     private final LabSpecimenService specimenService;
     private final AuditService auditService;
     private final ObjectProvider<AuthContext> authContextProvider;
@@ -382,7 +382,7 @@ public class CollectionService {
      *   5. OTHER
      */
     private CatalogResolution resolveCatalog(UUID hospitalId, LabOrder order) {
-        Optional<LabTestCatalog> cat = catalogRepository.findByHospitalIdAndTestCode(hospitalId,
+        Optional<LabService> cat = catalogRepository.findByHospitalIdAndTestCode(hospitalId,
                 safeCode(order.getServiceName()));
         if (cat.isEmpty() && order.getServiceName() != null) {
             // Pull a small candidate set via search and pick the best name match
@@ -397,7 +397,7 @@ public class CollectionService {
         }
 
         if (cat.isPresent()) {
-            LabTestCatalog c = cat.get();
+            LabService c = cat.get();
             String container = c.getDefaultContainerType() != null
                     ? c.getDefaultContainerType()
                     : deriveFromSampleType(order.getSampleType());

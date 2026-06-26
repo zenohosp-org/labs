@@ -19,7 +19,7 @@ const SPECIAL_STATE_OPTIONS = [
 ];
 
 const empty = {
-    labTestId: null,
+    labServiceId: null,
     testName: "",
     category: "",
     sex: "ANY",
@@ -48,7 +48,7 @@ export default function RangeEditorModal({ isOpen, onClose, range, onSuccess }) 
     useEffect(() => {
         if (range) {
             setForm({
-                labTestId: range.labTestId ?? null,
+                labServiceId: range.labServiceId ?? null,
                 testName: range.testName ?? "",
                 category: range.category ?? "",
                 sex: range.sex ?? "ANY",
@@ -81,7 +81,7 @@ export default function RangeEditorModal({ isOpen, onClose, range, onSuccess }) 
             return;
         }
         const payload = {
-            labTestId: form.labTestId ?? null,
+            labServiceId: form.labServiceId ?? null,
             testName: form.testName.trim(),
             category: form.category.trim() || null,
             sex: form.sex,
@@ -135,25 +135,25 @@ export default function RangeEditorModal({ isOpen, onClose, range, onSuccess }) 
                     <FormGroup
                         label="Test name *"
                         hint={
-                            form.labTestId
+                            form.labServiceId
                                 ? "Linked to catalogue — unit/category auto-fill from the test row."
                                 : "Type to search the catalogue; pick a row to link, or save as free text."
                         }
                     >
                         <TestPicker
                             value={form.testName}
-                            labTestId={form.labTestId}
+                            labServiceId={form.labServiceId}
                             onChange={(v) => set("testName", v)}
                             onPick={(t) => {
                                 setForm((f) => ({
                                     ...f,
-                                    labTestId: t.labTestId,
+                                    labServiceId: t.labServiceId,
                                     testName: t.name,
                                     category: t.category || f.category,
                                     unit: t.defaultUnit || f.unit,
                                 }));
                             }}
-                            onClear={() => set("labTestId", null)}
+                            onClear={() => set("labServiceId", null)}
                             placeholder="e.g. Hemoglobin"
                             autoFocus
                         />

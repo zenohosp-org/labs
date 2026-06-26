@@ -20,7 +20,7 @@ import java.util.UUID;
  *
  * Authorisation (pathologist sign-off, required for HISTOPATHOLOGY etc.) is
  * orthogonal to the FSM: a FINAL row gains {@code authorisedByUserId} when
- * the pathologist signs. {@link LabTestCatalog#getRequiresAuthorisation()}
+ * the pathologist signs. {@link LabService#getRequiresAuthorisation()}
  * drives whether the workflow blocks release until that field is set.
  *
  * Amendments are immutable — when a FINAL row needs correction, a NEW row

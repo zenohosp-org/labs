@@ -129,7 +129,7 @@ public class HealthCheckupService {
                         .normalRange(t.getNormalRange())
                         .displayOrder(i)
                         .mandatory(t.isMandatory())
-                        .labTestId(t.getLabTestId())   // Phase 3 — FK to lab_test_catalog
+                        .labServiceId(t.getLabServiceId())   // Phase 3 — FK to lab_services
                         .build();
                 pkg.getTests().add(test);
             }
@@ -364,8 +364,8 @@ public class HealthCheckupService {
         private String testCategory;
         private String normalRange;
         private boolean mandatory = true;
-        /** Phase 3 — FK to lab_test_catalog.id when picked from the catalogue. */
-        private Long labTestId;
+        /** Phase 3 — FK to lab_services.id when picked from the catalogue. */
+        private Long labServiceId;
     }
 
     @lombok.Data

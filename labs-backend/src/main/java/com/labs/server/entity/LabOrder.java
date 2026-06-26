@@ -88,11 +88,46 @@ public class LabOrder {
     @Column(name = "gst_rate", precision = 5, scale = 2)
     private BigDecimal gstRate;
 
+    // ── HIPAA-grade actor/timestamp triples for every status transition (V13).
+    //    Every flip of `status` is mirrored by (xxx_at, xxx_by_user_id, xxx_by_name)
+    //    so the operator UI can render "Collected 14:32 by Jane" from one row
+    //    read, and audit_log keeps the tamper-evident history independently.
+
     @Column(name = "collected_at")
     private LocalDateTime collectedAt;
 
+    @Column(name = "collected_by_user_id")
+    private UUID collectedByUserId;
+
+    @Column(name = "collected_by_name", length = 200)
+    private String collectedByName;
+
+    @Column(name = "received_at")
+    private LocalDateTime receivedAt;
+
+    @Column(name = "received_by_user_id")
+    private UUID receivedByUserId;
+
+    @Column(name = "received_by_name", length = 200)
+    private String receivedByName;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "started_by_user_id")
+    private UUID startedByUserId;
+
+    @Column(name = "started_by_name", length = 200)
+    private String startedByName;
+
     @Column(name = "reported_at")
     private LocalDateTime reportedAt;
+
+    @Column(name = "reported_by_user_id")
+    private UUID reportedByUserId;
+
+    @Column(name = "reported_by_name", length = 200)
+    private String reportedByName;
 
     @Column(columnDefinition = "TEXT")
     private String findings;

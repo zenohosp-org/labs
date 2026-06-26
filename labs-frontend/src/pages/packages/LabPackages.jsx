@@ -43,7 +43,7 @@ const CATEGORY_CHIP_CLS = {
     CUSTOM: "is-cat-custom",
 };
 
-const EMPTY_ITEM = { investigationName: "", investigationType: "PATHOLOGY", category: "", labTestId: null };
+const EMPTY_ITEM = { investigationName: "", investigationType: "PATHOLOGY", category: "", labServiceId: null };
 
 const EMPTY_FORM = {
     name: "", description: "", category: "GENERAL",
@@ -203,7 +203,7 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                                             <div className="is-span-2">
                                                 <TestPicker
                                                     value={it.investigationName}
-                                                    labTestId={it.labTestId}
+                                                    labServiceId={it.labServiceId}
                                                     onChange={(v) => updateItem(i, "investigationName", v)}
                                                     onPick={(t) => {
                                                         setForm((f) => {
@@ -211,13 +211,13 @@ function PackageFormModal({ initial, hospitalId, onClose, onSaved }) {
                                                             items[i] = {
                                                                 ...items[i],
                                                                 investigationName: t.name,
-                                                                labTestId: t.labTestId,
+                                                                labServiceId: t.labServiceId,
                                                                 category: t.category || items[i].category,
                                                             };
                                                             return { ...f, items };
                                                         });
                                                     }}
-                                                    onClear={() => updateItem(i, "labTestId", null)}
+                                                    onClear={() => updateItem(i, "labServiceId", null)}
                                                     placeholder="Investigation name (e.g. SGPT (ALT))"
                                                 />
                                             </div>
