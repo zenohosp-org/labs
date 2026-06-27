@@ -7193,7 +7193,7 @@
 @media (min-width: 768px) {
     .hms-rad-table-head {
         display: grid;
-        grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr auto;
+        grid-template-columns: 2.2fr 2fr 1.1fr 0.9fr 1.1fr 1fr 1.2fr auto;
         gap: 16px;
         padding: 10px 24px;
         background: var(--hms-gray-50);
@@ -7223,13 +7223,58 @@
 @media (min-width: 768px) {
     .hms-rad-row {
         display: grid;
-        grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr auto;
+        grid-template-columns: 2.2fr 2fr 1.1fr 0.9fr 1.1fr 1fr 1.2fr auto;
         gap: 16px;
         align-items: center;
     }
     .hms-rad-row.is-reports {
         grid-template-columns: 2.5fr 2fr 2fr 1.5fr 1fr auto;
     }
+}
+
+/* Single-badge status pill in the queue row STATUS column (Phase 7 / 8.1 — HMS-parity). */
+.hms-lab-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.hms-lab-status-badge__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: currentColor;
+}
+.hms-lab-status-badge.is-pending     { background: var(--hms-warning-bg); color: #b45309; border-color: #fde68a; }
+.hms-lab-status-badge.is-awaiting    { background: var(--hms-info-bg);    color: #1d4ed8; border-color: #bfdbfe; }
+.hms-lab-status-badge.is-progress    { background: #e0e7ff;               color: #3730a3; border-color: #c7d2fe; }
+.hms-lab-status-badge.is-reported    { background: var(--hms-success-bg); color: #065f46; border-color: #a7f3d0; }
+.hms-lab-status-badge.is-billed      { background: var(--hms-gray-100);   color: var(--hms-gray-700); border-color: var(--hms-gray-200); }
+
+/* IPD badge — shown next to patient name when the order is linked to an
+   admission. Tells the lab tech "this is an inpatient", and the admission
+   number under the UHID gives them the matching record for retrieval. */
+.hms-lab-ipd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
 }
 
 .hms-rad-row__stack {

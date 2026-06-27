@@ -13,7 +13,6 @@ import PackageManager from "@/pages/checkups/PackageManager";
 import Services from "@/pages/services/Services";
 import ReferenceRanges from "@/pages/settings/ReferenceRanges";
 import LabServices from "@/pages/settings/LabServices";
-import AuditTrail from "@/pages/settings/AuditTrail";
 import ReportTemplates from "@/pages/settings/ReportTemplates";
 import ReportVerify from "@/pages/ReportVerify";
 import LabPackages from "@/pages/packages/LabPackages";
@@ -79,7 +78,6 @@ function App() {
                             {/* Phase 7 rename — old bookmarked URL redirects to the new path */}
                             <Route path="settings/test-catalog" element={<Navigate to="/settings/lab-services" replace />} />
                             <Route path="settings/report-templates" element={<ReportTemplates />} />
-                            <Route path="settings/audit" element={<AuditTrail />} />
                         </Route>
 
                         {/* Fallback */}

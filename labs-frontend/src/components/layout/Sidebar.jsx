@@ -15,7 +15,6 @@ import {
     Boxes,
     LayoutGrid,
     TestTube,
-    History,
     FileSignature,
     Beaker,
 } from "lucide-react";
@@ -49,7 +48,6 @@ const SETTINGS_LINKS = [
     { label: "Reference Ranges", to: "/settings/reference-ranges", icon: Activity },
     { label: "Lab Services", to: "/settings/lab-services", icon: FlaskConical },
     { label: "Report Templates", to: "/settings/report-templates", icon: FileSignature },
-    { label: "Audit Trail", to: "/settings/audit", icon: History },
 ];
 
 const EXTERNAL_APPS = [

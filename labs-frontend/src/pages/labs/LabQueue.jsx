@@ -21,8 +21,17 @@ import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
 import SpecimensModal from "@/components/modals/SpecimensModal";
 import ReportActionsModal from "@/components/modals/ReportActionsModal";
-import StatusTimeline from "@/components/StatusTimeline";
-import { FileSignature, Inbox, Activity } from "lucide-react";
+import { Menu } from "@/components/ui";
+import { FileSignature, Inbox, Activity, MoreHorizontal, CheckCircle2 as CheckCircle2Icon, PlayCircle, Edit3 } from "lucide-react";
+
+// HMS-parity status badge — single pill shown in the STATUS column per row.
+const STATUS_META = {
+    PENDING_COLLECTION: { label: "Pending Collection", cls: "is-pending" },
+    AWAITING_REPORT:    { label: "Awaiting Report",    cls: "is-awaiting" },
+    IN_PROGRESS:        { label: "In Progress",        cls: "is-progress" },
+    REPORT_GENERATED:   { label: "Reported",           cls: "is-reported" },
+    BILLED:             { label: "Billed",             cls: "is-billed" },
+};
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -336,7 +345,7 @@ function QueueSection({
             ) : (
                 <div className="hms-rad-section__list">
                     <div className="hms-rad-table-head">
-                        {["Patient", "Investigation", "Sample", "Priority", "Payment", "Scheduled", ""].map((h) => (
+                        {["Patient", "Investigation", "Sample", "Priority", "Payment", "Scheduled", "Status", ""].map((h) => (
                             <p key={h} className="hms-rad-table-head__cell">{h}</p>
                         ))}
                     </div>
@@ -345,21 +354,27 @@ function QueueSection({
                         const PIcon = pmeta.icon;
                         return (
                             <div key={order.id} className="hms-rad-row">
-                                <div className="hms-rad-patient" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
-                                        <div>
-                                            <p className="hms-rad-patient__name">{order.patientName}</p>
-                                            <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
-                                            {order.accessionNumber && (
-                                                <p className="hms-rad-patient__uhid" title="Lab-wide accession (Phase 1)">
-                                                    ACC: <code>{order.accessionNumber}</code>
-                                                </p>
+                                <div className="hms-rad-patient">
+                                    <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
+                                    <div>
+                                        <p className="hms-rad-patient__name">
+                                            {order.patientName}
+                                            {order.admissionId && (
+                                                <span className="hms-lab-ipd-badge" title="Inpatient — admission linked">IPD</span>
                                             )}
-                                        </div>
+                                        </p>
+                                        <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                        {order.admissionNumber && (
+                                            <p className="hms-rad-patient__uhid" title="IPD admission number — for cross-reference with HMS">
+                                                ADM: <code>{order.admissionNumber}</code>
+                                            </p>
+                                        )}
+                                        {order.accessionNumber && (
+                                            <p className="hms-rad-patient__uhid" title="Lab accession — printed on specimen tube barcode">
+                                                ACC: <code>{order.accessionNumber}</code>
+                                            </p>
+                                        )}
                                     </div>
-                                    {/* Phase 7 — HIPAA-grade lifecycle pills with timestamps */}
-                                    <StatusTimeline order={order} kind="lab" compact />
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__svc-name">{order.serviceName}</p>
@@ -392,52 +407,28 @@ function QueueSection({
                                 <div>
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
                                 </div>
-                                <div className="hms-rad-row__action" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                    {onSpecimens && (
-                                        <button
-                                            onClick={() => onSpecimens(order)}
-                                            className="hms-rad-row__view-btn"
-                                            title="Specimens (Phase 1)"
-                                        >
-                                            <Beaker className="w-3 h-3" /> Specimens
-                                        </button>
+                                <div>
+                                    {STATUS_META[order.status] && (
+                                        <span className={`hms-lab-status-badge ${STATUS_META[order.status].cls}`}>
+                                            <span className="hms-lab-status-badge__dot" />
+                                            {STATUS_META[order.status].label}
+                                        </span>
                                     )}
-                                    {onReport && (
-                                        <button
-                                            onClick={() => onReport(order)}
-                                            className="hms-rad-row__view-btn"
-                                            title="Sign / download report PDF (Phase 5)"
-                                        >
-                                            <FileSignature className="w-3 h-3" /> Report
-                                        </button>
-                                    )}
-                                    {/* Phase 7 — Receive: only when AWAITING_REPORT and not yet receivedAt */}
-                                    {onReceive && order.status === "AWAITING_REPORT" && !order.receivedAt && (
-                                        <button
-                                            onClick={() => onReceive(order)}
-                                            disabled={loadingId === order.id}
-                                            className="hms-rad-row__view-btn"
-                                            title="Mark sample received at lab — stamps received_at + actor"
-                                        >
-                                            <Inbox className="w-3 h-3" /> Receive
-                                        </button>
-                                    )}
-                                    {showCollectAction ? (
-                                        <button
-                                            onClick={() => onAction(order)}
-                                            disabled={loadingId === order.id}
-                                            className={`hms-rad-row__action-btn ${actionMod}`}
-                                        >
-                                            {loadingId === order.id ? "Updating…" : actionLabel}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => onAction(order)}
-                                            className={`hms-rad-row__action-btn ${actionMod}`}
-                                        >
-                                            {actionLabel}
-                                        </button>
-                                    )}
+                                </div>
+                                <div className="hms-rad-row__action">
+                                    <Menu
+                                        triggerLabel="Order actions"
+                                        triggerIcon={<MoreHorizontal className="w-4 h-4" />}
+                                        items={buildActionItems({
+                                            order,
+                                            actionLabel,
+                                            onAction,
+                                            loadingId,
+                                            onReceive,
+                                            onSpecimens,
+                                            onReport,
+                                        })}
+                                    />
                                 </div>
                             </div>
                         );
@@ -446,6 +437,66 @@ function QueueSection({
             )}
         </div>
     );
+}
+
+/**
+ * Build the kebab menu items for one order row. Mirrors the HMS appointments
+ * ActionMenu pattern — every available action is a menu item, none stay as
+ * inline buttons. Item visibility is the same filter logic that used to gate
+ * each inline button.
+ */
+function buildActionItems({ order, actionLabel, onAction, loadingId, onReceive, onSpecimens, onReport }) {
+    const items = [];
+
+    // Primary action — the workflow-stage CTA (Mark Collected / Start Test / Write Report).
+    if (onAction) {
+        items.push({
+            key: "primary",
+            label: loadingId === order.id ? "Updating…" : actionLabel,
+            icon: actionLabel === "Write Report"
+                ? <Edit3 className="w-4 h-4" />
+                : actionLabel === "Start Test"
+                    ? <PlayCircle className="w-4 h-4" />
+                    : <CheckCircle2Icon className="w-4 h-4" />,
+            disabled: loadingId === order.id,
+            onClick: () => onAction(order),
+        });
+    }
+
+    // Phase 7 — Receive: AWAITING_REPORT only, before receivedAt is stamped.
+    if (onReceive && order.status === "AWAITING_REPORT" && !order.receivedAt) {
+        items.push({
+            key: "receive",
+            label: "Receive at lab",
+            icon: <Inbox className="w-4 h-4" />,
+            disabled: loadingId === order.id,
+            onClick: () => onReceive(order),
+        });
+    }
+
+    if (items.length > 0 && (onSpecimens || onReport)) {
+        items.push({ divider: true });
+    }
+
+    if (onSpecimens) {
+        items.push({
+            key: "specimens",
+            label: "Specimens",
+            icon: <Beaker className="w-4 h-4" />,
+            onClick: () => onSpecimens(order),
+        });
+    }
+
+    if (onReport) {
+        items.push({
+            key: "report",
+            label: "Report (sign / download PDF)",
+            icon: <FileSignature className="w-4 h-4" />,
+            onClick: () => onReport(order),
+        });
+    }
+
+    return items;
 }
 
 export { LabQueue as default };

@@ -20,7 +20,17 @@ import NewOrderModal from "./NewOrderModal";
 import WriteReportModal from "./WriteReportModal";
 import CollectPaymentModal from "./CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
-import StatusTimeline from "@/components/StatusTimeline";
+import { Menu } from "@/components/ui";
+import { MoreHorizontal, PlayCircle, Edit3 } from "lucide-react";
+
+// HMS-parity status badge — single pill shown in the STATUS column per row.
+const STATUS_META = {
+    PENDING_SCAN:     { label: "Pending Scan",     cls: "is-pending" },
+    IN_PROGRESS:      { label: "In Progress",      cls: "is-progress" },
+    AWAITING_REPORT:  { label: "Awaiting Report",  cls: "is-awaiting" },
+    REPORT_GENERATED: { label: "Reported",         cls: "is-reported" },
+    BILLED:           { label: "Billed",           cls: "is-billed" },
+};
 
 const PRIORITY_META = {
     ROUTINE: { cls: "is-routine", icon: Clock },
@@ -310,7 +320,7 @@ function QueueSection({
             ) : (
                 <div className="hms-rad-section__list">
                     <div className="hms-rad-table-head">
-                        {["Patient", "Investigation", "Technician", "Priority", "Payment", "Scheduled", ""].map((h) => (
+                        {["Patient", "Investigation", "Technician", "Priority", "Payment", "Scheduled", "Status", ""].map((h) => (
                             <p key={h} className="hms-rad-table-head__cell">{h}</p>
                         ))}
                     </div>
@@ -319,16 +329,22 @@ function QueueSection({
                         const PIcon = pmeta.icon;
                         return (
                             <div key={order.id} className="hms-rad-row" onClick={(e) => e.stopPropagation()}>
-                                <div className="hms-rad-patient" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
-                                        <div>
-                                            <p className="hms-rad-patient__name">{order.patientName}</p>
-                                            <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
-                                        </div>
+                                <div className="hms-rad-patient">
+                                    <div className="hms-rad-patient__avatar">{order.patientName[0]}</div>
+                                    <div>
+                                        <p className="hms-rad-patient__name">
+                                            {order.patientName}
+                                            {order.admissionId && (
+                                                <span className="hms-lab-ipd-badge" title="Inpatient — admission linked">IPD</span>
+                                            )}
+                                        </p>
+                                        <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
+                                        {order.admissionNumber && (
+                                            <p className="hms-rad-patient__uhid" title="IPD admission number">
+                                                ADM: <code>{order.admissionNumber}</code>
+                                            </p>
+                                        )}
                                     </div>
-                                    {/* Phase 7 — HIPAA-grade lifecycle pills with timestamps */}
-                                    <StatusTimeline order={order} kind="radiology" compact />
                                 </div>
                                 <div>
                                     <p className="hms-rad-row__svc-name">{order.serviceName}</p>
@@ -361,23 +377,32 @@ function QueueSection({
                                 <div>
                                     <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
                                 </div>
-                                <div className="hms-rad-row__action">
-                                    {showScanAction ? (
-                                        <button
-                                            onClick={() => onAction(order)}
-                                            disabled={loadingId === order.id}
-                                            className={`hms-rad-row__action-btn ${actionMod}`}
-                                        >
-                                            {loadingId === order.id ? "Updating…" : actionLabel}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => onAction(order)}
-                                            className={`hms-rad-row__action-btn ${actionMod}`}
-                                        >
-                                            {actionLabel}
-                                        </button>
+                                <div>
+                                    {STATUS_META[order.status] && (
+                                        <span className={`hms-lab-status-badge ${STATUS_META[order.status].cls}`}>
+                                            <span className="hms-lab-status-badge__dot" />
+                                            {STATUS_META[order.status].label}
+                                        </span>
                                     )}
+                                </div>
+                                <div className="hms-rad-row__action">
+                                    <Menu
+                                        triggerLabel="Order actions"
+                                        triggerIcon={<MoreHorizontal className="w-4 h-4" />}
+                                        items={[
+                                            {
+                                                key: "primary",
+                                                label: loadingId === order.id ? "Updating…" : actionLabel,
+                                                icon: actionLabel === "Write Report"
+                                                    ? <Edit3 className="w-4 h-4" />
+                                                    : actionLabel === "Start Scan"
+                                                        ? <PlayCircle className="w-4 h-4" />
+                                                        : <ScanLine className="w-4 h-4" />,
+                                                disabled: loadingId === order.id,
+                                                onClick: () => onAction(order),
+                                            },
+                                        ]}
+                                    />
                                 </div>
                             </div>
                         );
