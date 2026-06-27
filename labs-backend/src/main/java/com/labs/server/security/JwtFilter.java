@@ -1,5 +1,6 @@
 package com.labs.server.security;
 
+import com.labs.server.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -15,12 +16,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Value("${sso.cookie.name:sso_token}")
     private String cookieName;
@@ -37,15 +40,23 @@ public class JwtFilter extends OncePerRequestFilter {
         if (token != null) {
             if (jwtUtil.isValid(token)) {
                 try {
-                    String userId = jwtUtil.getUserId(token).toString();
-                    String role = jwtUtil.getRole(token);
+                    UUID uid = jwtUtil.getUserId(token);
+                    // Tighten to match HMS posture: a signature-valid JWT alone is
+                    // not enough — the user must still exist and be active. Closes
+                    // the leaked-secret / disabled-user gap labs had vs HMS.
+                    if (userRepository.findByIdAndIsActiveTrue(uid).isPresent()) {
+                        String userId = uid.toString();
+                        String role = jwtUtil.getRole(token);
 
-                    if (role == null)
-                        role = "USER";
+                        if (role == null)
+                            role = "USER";
 
-                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-                    var auth = new UsernamePasswordAuthenticationToken(userId, token, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                        var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                        var auth = new UsernamePasswordAuthenticationToken(userId, token, authorities);
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    } else {
+                        logger.debug("JWT signature valid but user " + uid + " missing or inactive — request stays anonymous");
+                    }
                 } catch (Exception e) {
                     logger.error("Failed to set security context from token: " + e.getMessage(), e);
                 }
