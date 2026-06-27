@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { labApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
+import { fmtDate } from "@/utils/date";
 import {
     TestTube,
     Clock,
@@ -405,7 +406,7 @@ function QueueSection({
                                     <PaymentCell order={order} onCollect={onCollect} />
                                 </div>
                                 <div>
-                                    <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
+                                    <p className="hms-rad-row__date-empty">{order.scheduledDate ? fmtDate(order.scheduledDate) : "—"}</p>
                                 </div>
                                 <div>
                                     {STATUS_META[order.status] && (

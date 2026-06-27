@@ -72,8 +72,8 @@ export default function ReportTemplates() {
         try {
             const data = await reportTemplateApi.list();
             setRows(data ?? []);
-        } catch {
-            notify("Failed to load report templates", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load report templates", "error");
         } finally {
             setLoading(false);
         }

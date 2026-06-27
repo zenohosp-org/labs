@@ -83,8 +83,8 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
         try {
             const data = await specimenApi.listForOrder(order.id);
             setRows(data ?? []);
-        } catch {
-            notify("Failed to load specimens", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load specimens", "error");
         } finally {
             setLoading(false);
         }
@@ -129,8 +129,8 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
             });
             await load();
             onChanged?.();
-        } catch {
-            notify("Failed to add specimen", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to add specimen", "error");
             setAdd((a) => ({ ...a, saving: false }));
         }
     };
@@ -142,8 +142,8 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
             notify(`Specimen ${row.barcode} received`, "success");
             await load();
             onChanged?.();
-        } catch {
-            notify("Failed to mark received", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to mark received", "error");
         } finally {
             setActingId(null);
         }
@@ -156,8 +156,8 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
             notify(`Specimen ${row.barcode} accessioned`, "success");
             await load();
             onChanged?.();
-        } catch {
-            notify("Failed to accession", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to accession", "error");
         } finally {
             setActingId(null);
         }
@@ -178,8 +178,8 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
             setReject({ open: false, target: null, reasonCode: "", reasonNotes: "", saving: false });
             await load();
             onChanged?.();
-        } catch {
-            notify("Failed to reject", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to reject", "error");
             setReject((r) => ({ ...r, saving: false }));
         }
     };

@@ -127,8 +127,8 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
         try {
             const data = await resultApi.listForOrder(order.id);
             setRows(data ?? []);
-        } catch {
-            notify("Failed to load results", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load results", "error");
         } finally {
             setLoading(false);
         }
@@ -209,8 +209,8 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
             setAdHoc([]);
             await load();
             onAfterChange?.();
-        } catch {
-            notify("Failed to save results", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to save results", "error");
         } finally {
             setSaving(false);
         }
@@ -254,8 +254,8 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
             notify("Panic call recorded", "success");
             await load();
             onAfterChange?.();
-        } catch {
-            notify("Failed to record panic call", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to record panic call", "error");
         } finally {
             setActingId(null);
         }

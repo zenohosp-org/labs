@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { radiologyApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
+import { fmtDate } from "@/utils/date";
 import {
     ScanLine,
     Clock,
@@ -62,8 +63,8 @@ function RadiologyQueue() {
             ]);
             setOrders(ordersData);
             setStats(statsData);
-        } catch {
-            notify("Failed to load radiology queue", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load radiology queue", "error");
         } finally {
             setLoading(false);
         }
@@ -80,8 +81,8 @@ function RadiologyQueue() {
             await radiologyApi.markScanned(order.id);
             notify("Marked as scanned — moved to Awaiting Report", "success");
             load();
-        } catch {
-            notify("Failed to update status", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to update status", "error");
         } finally {
             setMarkingScanned(null);
         }
@@ -375,7 +376,7 @@ function QueueSection({
                                     <PaymentCell order={order} onCollect={onCollect} />
                                 </div>
                                 <div>
-                                    <p className="hms-rad-row__date-empty">{order.scheduledDate ?? "—"}</p>
+                                    <p className="hms-rad-row__date-empty">{order.scheduledDate ? fmtDate(order.scheduledDate) : "—"}</p>
                                 </div>
                                 <div>
                                     {STATUS_META[order.status] && (

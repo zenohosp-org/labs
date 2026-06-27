@@ -39,8 +39,8 @@ function LabReports() {
             ]);
             setOrders(reports);
             setStats(statsData);
-        } catch {
-            notify("Failed to load lab reports", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load lab reports", "error");
         } finally {
             setLoading(false);
         }
