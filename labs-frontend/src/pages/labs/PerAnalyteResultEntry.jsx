@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     Plus,
-    CheckCircle2,
-    ShieldCheck,
-    Pencil,
-    PhoneCall,
     Loader2,
     Trash2,
     ArrowDown,
@@ -15,16 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { resultApi, labServiceApi, referenceRangeApi } from "@/api/labsClient";
-import { Alert, Badge, Button } from "@/components/ui";
-import AmendResultModal from "@/components/modals/AmendResultModal";
-
-const STATUS_TONE = {
-    PENDING: "neutral",
-    PRELIMINARY: "warning",
-    FINAL: "success",
-    CORRECTED: "info",
-    CANCELLED: "danger",
-};
+import { Alert, Button } from "@/components/ui";
 
 const FLAG_META = {
     LL: { tone: "danger", icon: AlertOctagon, label: "PANIC LOW" },
@@ -150,20 +137,21 @@ function shouldUseNarrativeUx(order) {
 }
 
 /**
- * Per-analyte result entry — the new analytical surface that replaces (or
- * coexists with) the legacy findings textarea.
+ * Per-analyte result entry — the analytical surface paired with the legacy
+ * findings textarea.
  *
- * Workflow:
- *   1. On mount we fetch existing rows + a best-guess panel from the
- *      hospital test catalogue based on order.serviceName ("CBC", "LFT").
+ * Workflow (Phase 9 simplified):
+ *   1. On mount we fetch existing rows + the catalogue + reference ranges
+ *      in parallel, then resolve the panel for this order via FK (V14) or
+ *      name match.
  *   2. The table shows existing results first, then any panel analytes
  *      that don't have a row yet (the tech just types values + hits Save).
- *   3. Saved rows live in PRELIMINARY until the tech clicks Verify → FINAL.
- *   4. FINAL rows show an Authorise button (pathologist sign-off) and an
- *      Amend button. Amend never overwrites — it inserts a new CORRECTED
- *      row pointing at the original via amendmentOfId.
- *   5. Panic-flagged rows surface a Phone call button to record the
- *      mandatory NABL communication + acknowledgement.
+ *      Each row carries its own reference band; the value input tints +
+ *      a bold flag pill appears the moment a typed value crosses a band.
+ *   3. Save drafts persists every typed value as PRELIMINARY.
+ *   4. The lifecycle promotion (IN_PROGRESS → REPORT_GENERATED) happens via
+ *      the queue kebab's "Mark Completed" action — no per-row sign-off
+ *      ceremony lives here anymore (dropped in Phase 9).
  */
 export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     const { user } = useAuth();
@@ -176,8 +164,6 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     const [draftValues, setDraftValues] = useState({}); // testCode -> string
     const [adHoc, setAdHoc] = useState([]); // [{tempId, testCode, analyteName, value}]
     const [saving, setSaving] = useState(false);
-    const [actingId, setActingId] = useState(null);
-    const [amend, setAmend] = useState(null);
 
     const load = async () => {
         if (!order?.id) return;
@@ -281,51 +267,6 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
         }
     };
 
-    const handleVerify = async (r) => {
-        setActingId(r.id);
-        try {
-            await resultApi.verify(r.id, {});
-            notify(`${r.analyteName} verified → FINAL`, "success");
-            await load();
-            onAfterChange?.();
-        } catch {
-            notify("Verify failed", "error");
-        } finally {
-            setActingId(null);
-        }
-    };
-
-    const handleAuthorise = async (r) => {
-        setActingId(r.id);
-        try {
-            await resultApi.authorise(r.id, {});
-            notify(`${r.analyteName} authorised by pathologist`, "success");
-            await load();
-            onAfterChange?.();
-        } catch {
-            notify("Authorise failed", "error");
-        } finally {
-            setActingId(null);
-        }
-    };
-
-    const handlePanicCall = async (r) => {
-        const calledTo = prompt(`Who did you call about ${r.analyteName} (panic ${r.abnormalFlag})?`);
-        if (!calledTo) return;
-        const acknowledgedBy = prompt(`Who acknowledged the call? (optional)`);
-        setActingId(r.id);
-        try {
-            await resultApi.panicCall(r.id, { calledTo, acknowledgedBy: acknowledgedBy || null });
-            notify("Panic call recorded", "success");
-            await load();
-            onAfterChange?.();
-        } catch (err) {
-            notify(err?.response?.data?.message || "Failed to record panic call", "error");
-        } finally {
-            setActingId(null);
-        }
-    };
-
     if (loading) {
         return (
             <div className="flex items-center justify-center py-8">
@@ -373,27 +314,17 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                     <thead>
                         <tr className="text-left text-12 text-gray-500 border-b">
                             <th className="py-2 pr-2">Analyte</th>
-                            <th className="py-2 pr-2 w-32">Value</th>
+                            <th className="py-2 pr-2 w-36">Value</th>
                             <th className="py-2 pr-2 w-20">Unit</th>
-                            <th className="py-2 pr-2 w-24">Flag</th>
-                            <th className="py-2 pr-2 w-32">Reference</th>
+                            <th className="py-2 pr-2 w-28">Flag</th>
+                            <th className="py-2 pr-2 w-40">Reference</th>
                             <th className="py-2 pr-2 w-24">Δ vs prev</th>
-                            <th className="py-2 pr-2 w-28">Status</th>
-                            <th className="py-2 pr-2 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {/* Existing rows */}
                         {Array.from(existingByCode.values()).map((r) => (
-                            <ResultRow
-                                key={r.id}
-                                r={r}
-                                acting={actingId === r.id}
-                                onVerify={handleVerify}
-                                onAuthorise={handleAuthorise}
-                                onAmend={setAmend}
-                                onPanicCall={handlePanicCall}
-                            />
+                            <ResultRow key={r.id} r={r} />
                         ))}
 
                         {/* Panel children not yet entered */}
@@ -453,10 +384,6 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                     )}
                                 </td>
                                 <td className="py-2 pr-2 text-gray-300">—</td>
-                                <td className="py-2 pr-2">
-                                    <Badge tone="neutral" soft>NOT ENTERED</Badge>
-                                </td>
-                                <td className="py-2 pr-2 text-right text-gray-300">—</td>
                             </tr>
                             );
                         })}
@@ -465,18 +392,31 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                         {adHoc.map((a, idx) => (
                             <tr key={a.tempId} className="border-b border-gray-100 bg-amber-50/40">
                                 <td className="py-2 pr-2">
-                                    <input
-                                        value={a.analyteName}
-                                        onChange={(e) =>
-                                            setAdHoc((arr) => {
-                                                const next = [...arr];
-                                                next[idx] = { ...next[idx], analyteName: e.target.value };
-                                                return next;
-                                            })
-                                        }
-                                        placeholder="Analyte name"
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-13"
-                                    />
+                                    <div className="hms-analyte-adhoc-name">
+                                        <input
+                                            value={a.analyteName}
+                                            onChange={(e) =>
+                                                setAdHoc((arr) => {
+                                                    const next = [...arr];
+                                                    next[idx] = { ...next[idx], analyteName: e.target.value };
+                                                    return next;
+                                                })
+                                            }
+                                            placeholder="Analyte name"
+                                            className="hms-analyte-input"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setAdHoc((arr) => arr.filter((_, i) => i !== idx))
+                                            }
+                                            className="hms-analyte-adhoc-remove"
+                                            aria-label="Remove ad-hoc analyte"
+                                            title="Remove this row"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                     <input
                                         value={a.testCode}
                                         onChange={(e) =>
@@ -487,7 +427,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                             })
                                         }
                                         placeholder="Test code (LOINC)"
-                                        className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-12 text-gray-600 font-mono"
+                                        className="hms-analyte-input hms-analyte-adhoc-code"
                                     />
                                 </td>
                                 <td className="py-2 pr-2">
@@ -501,21 +441,10 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                             })
                                         }
                                         placeholder="Result value"
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-13"
+                                        className="hms-analyte-input"
                                     />
                                 </td>
-                                <td colSpan={5} />
-                                <td className="py-2 pr-2 text-right">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setAdHoc((arr) => arr.filter((_, i) => i !== idx))
-                                        }
-                                        className="text-gray-400 hover:text-rose-600"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </td>
+                                <td colSpan={4} />
                             </tr>
                         ))}
                     </tbody>
@@ -539,23 +468,11 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                     {saving ? "Saving…" : "Save drafts (PRELIMINARY)"}
                 </Button>
             </div>
-
-            {amend && (
-                <AmendResultModal
-                    result={amend}
-                    onClose={() => setAmend(null)}
-                    onAmended={() => {
-                        setAmend(null);
-                        load();
-                        onAfterChange?.();
-                    }}
-                />
-            )}
         </div>
     );
 }
 
-function ResultRow({ r, acting, onVerify, onAuthorise, onAmend, onPanicCall }) {
+function ResultRow({ r }) {
     const meta = FLAG_META[r.abnormalFlag];
     const FlagIcon = meta?.icon;
     return (
@@ -563,11 +480,6 @@ function ResultRow({ r, acting, onVerify, onAuthorise, onAmend, onPanicCall }) {
             <td className="py-2 pr-2">
                 <div className="font-bold text-gray-900">{r.analyteName}</div>
                 {r.loincCode && <div className="text-11 text-gray-400">LOINC {r.loincCode}</div>}
-                {r.amendmentOfId && (
-                    <div className="text-11 text-amber-700 inline-flex items-center gap-1">
-                        <Pencil size={10} /> Amends #{r.amendmentOfId}
-                    </div>
-                )}
             </td>
             <td className="py-2 pr-2 font-mono text-gray-900">
                 {r.valueNumeric ?? r.valueText ?? "—"}
@@ -575,77 +487,29 @@ function ResultRow({ r, acting, onVerify, onAuthorise, onAmend, onPanicCall }) {
             <td className="py-2 pr-2 text-12 text-gray-500">{r.unit}</td>
             <td className="py-2 pr-2">
                 {meta ? (
-                    <Badge tone={meta.tone} soft>
-                        <FlagIcon className="w-3 h-3 inline mr-1" />
+                    <span className={`hms-analyte-flag is-${meta.tone}`}>
+                        {FlagIcon && <FlagIcon className="w-3 h-3" />}
                         {meta.label}
-                    </Badge>
+                    </span>
                 ) : (
                     <span className="text-gray-300">—</span>
                 )}
             </td>
-            <td className="py-2 pr-2 text-12 text-gray-600">
-                {r.referenceText ||
-                    (r.referenceLow != null && r.referenceHigh != null
-                        ? `${r.referenceLow} – ${r.referenceHigh}`
-                        : "—")}
+            <td className="py-2 pr-2">
+                {(r.referenceText
+                    || (r.referenceLow != null && r.referenceHigh != null
+                        ? `${r.referenceLow} – ${r.referenceHigh}${r.unit ? " " + r.unit : ""}`
+                        : null)) ? (
+                    <span className="hms-analyte-ref__band">
+                        {r.referenceText
+                            || `${r.referenceLow} – ${r.referenceHigh}${r.unit ? " " + r.unit : ""}`}
+                    </span>
+                ) : (
+                    <span className="text-gray-300">—</span>
+                )}
             </td>
             <td className="py-2 pr-2 font-mono text-12 text-gray-600">
                 {r.deltaFromPrevious != null ? (r.deltaFromPrevious > 0 ? "+" : "") + r.deltaFromPrevious : "—"}
-            </td>
-            <td className="py-2 pr-2">
-                <Badge tone={STATUS_TONE[r.resultStatus] ?? "neutral"} soft>
-                    {r.resultStatus}
-                </Badge>
-                {r.authorisedAt && (
-                    <div className="text-11 text-emerald-700 inline-flex items-center gap-1 mt-0.5">
-                        <ShieldCheck size={10} /> Authorised
-                    </div>
-                )}
-            </td>
-            <td className="py-2 pr-2 text-right">
-                <div className="inline-flex gap-1 flex-wrap justify-end">
-                    {r.resultStatus === "PRELIMINARY" && (
-                        <Button
-                            size="sm"
-                            variant="primary"
-                            onClick={() => onVerify(r)}
-                            disabled={acting}
-                        >
-                            <CheckCircle2 size={12} /> Verify
-                        </Button>
-                    )}
-                    {(r.resultStatus === "FINAL" || r.resultStatus === "CORRECTED") &&
-                        !r.authorisedAt && (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => onAuthorise(r)}
-                                disabled={acting}
-                            >
-                                <ShieldCheck size={12} /> Authorise
-                            </Button>
-                        )}
-                    {(r.resultStatus === "FINAL" || r.resultStatus === "CORRECTED") && (
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onAmend(r)}
-                            disabled={acting}
-                        >
-                            <Pencil size={12} /> Amend
-                        </Button>
-                    )}
-                    {r.panicFlag && !r.panicCalledAt && (
-                        <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => onPanicCall(r)}
-                            disabled={acting}
-                        >
-                            <PhoneCall size={12} /> Panic call
-                        </Button>
-                    )}
-                </div>
             </td>
         </tr>
     );

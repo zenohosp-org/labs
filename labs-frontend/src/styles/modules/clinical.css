@@ -7959,6 +7959,38 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Ad-hoc analyte row — keeps the trash trigger inline (the Actions column was
+   retired) so the name input still has room to breathe. */
+.hms-analyte-adhoc-name {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.hms-analyte-adhoc-name .hms-analyte-input { flex: 1; }
+.hms-analyte-adhoc-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--hms-gray-400);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.hms-analyte-adhoc-remove:hover {
+    color: #b91c1c;
+    background: #fef2f2;
+}
+.hms-analyte-adhoc-code {
+    margin-top: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    color: var(--hms-gray-600);
+}
+
 .hms-rad-modal__hdr {
     display: flex;
     align-items: center;
