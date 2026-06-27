@@ -35,6 +35,7 @@ public class LabCatalogService {
     private final LabServiceRepository repository;
     private final LabReferenceRangeRepository rangeRepository;
     private final LabServiceSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
+    private final RadiologyServiceSeeder radiologySeeder;  // V14 — gated by labs.seed.radiology.*
     private final AuditService auditService;
 
     public List<LabServiceDTO> list(UUID hospitalId, boolean activeOnly) {
@@ -44,6 +45,7 @@ public class LabCatalogService {
             // opens a writable transaction and the inserts flush.
             seeder.seedFor(hospitalId);
         }
+        radiologySeeder.seedFor(hospitalId);  // no-op unless gated property + allow-list match
         List<LabService> rows = activeOnly
                 ? repository.findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId)
                 : repository.findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(hospitalId);

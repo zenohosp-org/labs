@@ -16,6 +16,8 @@ public interface LabServiceRepository extends JpaRepository<LabService, Long> {
 
     long countByHospitalId(UUID hospitalId);
 
+    long countByHospitalIdAndDiscipline(UUID hospitalId, String discipline);
+
     List<LabService> findByHospitalIdOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
 
     List<LabService> findByHospitalIdAndActiveTrueOrderByCategoryAscDisplayOrderAscNameAsc(UUID hospitalId);
