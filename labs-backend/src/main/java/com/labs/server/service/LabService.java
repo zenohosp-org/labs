@@ -394,6 +394,24 @@ public class LabService {
     private LabOrderDTO toDTO(LabOrder o) {
         String patientName = o.getPatient().getFirstName()
                 + (o.getPatient().getLastName() != null ? " " + o.getPatient().getLastName() : "");
+
+        // Phase 8.1 — when the order carries a catalog FK, project the rows
+        // discipline + valueType so the FE can pick the right report-entry UX
+        // (per-analyte panel for numeric pathology; narrative findings for
+        // radiology/text). One PK lookup; negligible cost vs the FE re-fetch
+        // it replaces. Null for legacy free-text orders.
+        String catalogDiscipline = null;
+        String catalogValueType = null;
+        if (o.getLabServiceId() != null) {
+            try {
+                var row = labServiceRepository.findById(o.getLabServiceId()).orElse(null);
+                if (row != null) {
+                    catalogDiscipline = row.getDiscipline();
+                    catalogValueType = row.getValueType();
+                }
+            } catch (Exception ignored) { }
+        }
+
         return LabOrderDTO.builder()
                 .id(o.getId())
                 .hospitalId(o.getHospital().getId())
@@ -430,6 +448,10 @@ public class LabService {
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
                 .accessionNumber(o.getAccessionNumber())
+                .labServiceId(o.getLabServiceId())
+                .labServiceDiscipline(catalogDiscipline)
+                .labServiceValueType(catalogValueType)
+                .serviceNameMappingStatus(o.getServiceNameMappingStatus())
                 .createdByName(o.getCreatedByName())
                 .createdAt(o.getCreatedAt())
                 .build();

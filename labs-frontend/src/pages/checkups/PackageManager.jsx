@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { checkupApi } from "@/utils/api";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import TestPicker from "@/components/TestPicker";
@@ -271,6 +272,7 @@ function PackageCard({ pkg, onEdit, onToggle, onDelete }) {
 
 export default function PackageManager() {
   const { user } = useAuth();
+  const { notify } = useNotification();
   const hospitalId = user?.hospitalId;
 
   const [packages, setPackages] = useState([]);
@@ -297,14 +299,24 @@ export default function PackageManager() {
   };
 
   const handleToggle = async (id) => {
-    await checkupApi.togglePackage(id);
-    load();
+    try {
+      await checkupApi.togglePackage(id);
+      notify("Package status updated", "success");
+      load();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Failed to toggle package", "error");
+    }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Delete this package? Existing bookings will not be affected.")) return;
-    await checkupApi.deletePackage(id);
-    load();
+    if (!window.confirm("Delete this package? Existing bookings will not be affected.")) return;
+    try {
+      await checkupApi.deletePackage(id);
+      notify("Package deleted", "success");
+      load();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Failed to delete package", "error");
+    }
   };
 
   const filtered = filterCat === "ALL" ? packages : packages.filter(p => p.category === filterCat);

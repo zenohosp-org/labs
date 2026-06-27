@@ -138,7 +138,7 @@ export default function LabServices() {
             const data = await labServiceApi.list(user.hospitalId, false);
             setRows(data ?? []);
         } catch {
-            notify("Failed to load test catalogue", "error");
+            notify("Failed to load lab services", "error");
         } finally {
             setLoading(false);
         }
@@ -328,13 +328,18 @@ export default function LabServices() {
                 ),
         },
         {
-            header: "Auth?",
-            width: "8%",
+            header: "Price",
+            width: "10%",
             render: (r) =>
-                r.requiresAuthorisation ? (
-                    <Badge tone="warning" soft>Pathologist</Badge>
+                r.price != null ? (
+                    <span className="text-13 text-gray-800 font-medium tabular-nums">
+                        ₹{Number(r.price).toLocaleString("en-IN")}
+                        {r.gstRate != null && (
+                            <span className="text-11 text-gray-500"> +{r.gstRate}%</span>
+                        )}
+                    </span>
                 ) : (
-                    <span className="text-gray-400 text-12">Tech-only</span>
+                    <span className="text-gray-300 text-12">—</span>
                 ),
         },
         {
@@ -397,8 +402,8 @@ export default function LabServices() {
 
     const titleNode = (
         <span className="inline-flex items-center gap-3">
-            Test Catalog
-            <Badge tone="info">{rows.length} tests</Badge>
+            Lab Services
+            <Badge tone="info">{rows.length} services</Badge>
         </span>
     );
 

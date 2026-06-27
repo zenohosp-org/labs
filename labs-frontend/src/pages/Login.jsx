@@ -55,7 +55,7 @@ const SLIDES = [
     },
     {
         title: "Microbiology to molecular — covered",
-        sub: "Configure your test catalogue once; every department stays in sync.",
+        sub: "Configure your lab services catalogue once; every department stays in sync.",
         Hero: Microscope,
         side: [Beaker, Droplet, FlaskConical],
         tone: "is-green",

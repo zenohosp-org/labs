@@ -395,14 +395,24 @@ export default function LabPackages() {
     };
 
     const handleToggle = async (id) => {
-        await labPackageApi.toggle(id);
-        load();
+        try {
+            await labPackageApi.toggle(id);
+            notify("Package status updated", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to toggle package", "error");
+        }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Delete this package? Already-ordered packages keep their snapshot.")) return;
-        await labPackageApi.delete(id);
-        load();
+        if (!window.confirm("Delete this package? Already-ordered packages keep their snapshot.")) return;
+        try {
+            await labPackageApi.delete(id);
+            notify("Package deleted", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to delete package", "error");
+        }
     };
 
     const filtered =

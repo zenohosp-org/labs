@@ -36,19 +36,60 @@ const FLAG_META = {
     AA: { tone: "danger", icon: AlertOctagon, label: "CRIT. ABN." },
 };
 
-function findPanel(catalog, serviceName) {
-    if (!serviceName) return null;
-    const want = serviceName.trim().toLowerCase();
+/**
+ * Resolve which catalogue panel the per-analyte UI should expand for this order.
+ *
+ * Precedence:
+ *   1. If the order carries a labServiceId FK (Phase 8.1 V14), look that row up
+ *      directly — exact match, no fuzzy guesswork.
+ *   2. Fall back to name-match for legacy free-text orders.
+ *
+ * Filter: skip RADIOLOGY discipline + non-NUMERIC value-type rows. They never
+ * map to a per-analyte panel; the modal will show the narrative findings UI
+ * instead.
+ */
+function findPanel(catalog, order) {
+    if (!catalog?.length || !order) return null;
+
+    const acceptable = (c) =>
+        c.isPanel
+        && c.discipline !== "RADIOLOGY"
+        && (c.valueType == null || c.valueType === "NUMERIC");
+
+    // 1. FK-direct lookup (V14 catalog-linked orders).
+    if (order.labServiceId) {
+        const direct = catalog.find((c) => c.id === order.labServiceId);
+        if (direct && acceptable(direct)) return direct;
+        // If the FK resolves but the row isn't an orderable panel (e.g. it's a
+        // single analyte or a radiology row), short-circuit: no panel expansion.
+        if (direct) return null;
+    }
+
+    // 2. Legacy name-match for orders pre-dating V14.
+    const want = order.serviceName?.trim().toLowerCase();
+    if (!want) return null;
     const exact =
-        catalog.find((c) => c.isPanel && c.testCode?.toLowerCase() === want) ||
-        catalog.find((c) => c.isPanel && c.name?.toLowerCase() === want);
+        catalog.find((c) => acceptable(c) && c.testCode?.toLowerCase() === want) ||
+        catalog.find((c) => acceptable(c) && c.name?.toLowerCase() === want);
     if (exact) return exact;
     return (
-        catalog.find((c) => c.isPanel && want.includes(c.testCode.toLowerCase())) ||
-        catalog.find((c) => c.isPanel && c.name?.toLowerCase().includes(want)) ||
-        catalog.find((c) => c.isPanel && want.includes(c.name?.toLowerCase() ?? "")) ||
+        catalog.find((c) => acceptable(c) && want.includes(c.testCode.toLowerCase())) ||
+        catalog.find((c) => acceptable(c) && c.name?.toLowerCase().includes(want)) ||
+        catalog.find((c) => acceptable(c) && want.includes(c.name?.toLowerCase() ?? "")) ||
         null
     );
+}
+
+/**
+ * Phase 8.1 — does this order belong on the per-analyte panel UX at all?
+ * Returns false for RADIOLOGY discipline or any non-NUMERIC value type — those
+ * use the narrative-findings textarea instead.
+ */
+function shouldUseNarrativeUx(order) {
+    if (!order) return false;
+    if (order.labServiceDiscipline === "RADIOLOGY") return true;
+    if (order.labServiceValueType && order.labServiceValueType !== "NUMERIC") return true;
+    return false;
 }
 
 /**
@@ -104,7 +145,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
             try {
                 const c = await labServiceApi.list(user.hospitalId, true);
                 setCatalog(c ?? []);
-                const panel = findPanel(c ?? [], order?.serviceName);
+                const panel = findPanel(c ?? [], order);
                 if (panel) {
                     try {
                         const kids = await labServiceApi.expandPanel(panel.testCode, user.hospitalId);
@@ -229,13 +270,26 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     }
 
     const showPanelBanner = panelChildren.length > 0;
-    const noCatalogMatch = panelChildren.length === 0 && rows.length === 0;
+    const useNarrativeUx = shouldUseNarrativeUx(order);
+    const noCatalogMatch = !useNarrativeUx && panelChildren.length === 0 && rows.length === 0;
+
+    if (useNarrativeUx) {
+        return (
+            <Alert tone="info">
+                <strong>{order.serviceName}</strong> is a {order.labServiceDiscipline === "RADIOLOGY"
+                    ? "radiology"
+                    : "narrative"}{" "}
+                investigation — per-analyte entry doesn't apply. Switch to the{" "}
+                <strong>Findings text (legacy)</strong> tab to enter the report.
+            </Alert>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-3">
             {showPanelBanner && (
                 <Alert tone="info">
-                    Matched catalogue panel <strong>{order.serviceName}</strong> →{" "}
+                    Matched lab service <strong>{order.serviceName}</strong> →{" "}
                     <strong>{panelChildren.length}</strong> analytes. Type values and hit{" "}
                     <strong>Save drafts</strong> — each saves as <em>PRELIMINARY</em> and
                     gets auto-flagged against the reference range.
@@ -243,9 +297,9 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
             )}
             {noCatalogMatch && (
                 <Alert tone="warning">
-                    No panel matches <strong>{order.serviceName}</strong> in your test
-                    catalogue. Either add analytes manually below, or seed the catalogue
-                    from <strong>Settings → Test Catalog</strong>.
+                    No matching panel found for <strong>{order.serviceName}</strong> in your
+                    Lab Services catalogue. Either add analytes manually below, or curate
+                    the catalogue from <strong>Settings → Lab Services</strong>.
                 </Alert>
             )}
 
@@ -334,7 +388,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                                 return next;
                                             })
                                         }
-                                        placeholder="testCode"
+                                        placeholder="Test code (LOINC)"
                                         className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-12 text-gray-600 font-mono"
                                     />
                                 </td>
@@ -348,7 +402,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                                 return next;
                                             })
                                         }
-                                        placeholder="value"
+                                        placeholder="Result value"
                                         className="w-full px-2 py-1 border border-gray-200 rounded text-13"
                                     />
                                 </td>

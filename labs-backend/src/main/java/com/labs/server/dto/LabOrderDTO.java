@@ -52,6 +52,14 @@ public class LabOrderDTO {
     /** Phase 1 — public lab-wide accession printed on barcodes / requisitions. */
     private String accessionNumber;
 
+    /** Phase 8.1 (V14) — catalog FK + projected discipline/valueType so the FE can
+     *  route the report-entry UX (per-analyte panel vs narrative findings) without
+     *  re-fetching the catalogue. Null on legacy free-text orders. */
+    private Long labServiceId;
+    private String labServiceDiscipline;
+    private String labServiceValueType;
+    private String serviceNameMappingStatus;
+
     private String createdByName;
     private LocalDateTime createdAt;
 }
