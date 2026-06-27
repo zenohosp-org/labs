@@ -47,7 +47,9 @@ function RadiologyQueue() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [priorityFilter, setPriorityFilter] = useState("ALL");
+    // Phase 9 — section tab. Replaces the priority filter; per-row priority
+    // badges still carry the visual triage. Default: pending scans.
+    const [activeSection, setActiveSection] = useState("pending");
     const [showNewModal, setShowNewModal] = useState(false);
     const [writeReport, setWriteReport] = useState(null);
     const [collectPayment, setCollectPayment] = useState(null);
@@ -139,19 +141,15 @@ function RadiologyQueue() {
     const awaiting = orders.filter((o) => o.status === "AWAITING_REPORT");
 
     const applyFilters = (list) => {
-        let result = list;
-        if (priorityFilter !== "ALL") result = result.filter((o) => o.priority === priorityFilter);
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            result = result.filter(
-                (o) =>
-                    o.patientName.toLowerCase().includes(q) ||
-                    o.patientUhid.toLowerCase().includes(q) ||
-                    o.serviceName.toLowerCase().includes(q) ||
-                    o.technicianName?.toLowerCase().includes(q)
-            );
-        }
-        return result;
+        if (!search.trim()) return list;
+        const q = search.toLowerCase();
+        return list.filter(
+            (o) =>
+                o.patientName.toLowerCase().includes(q) ||
+                o.patientUhid.toLowerCase().includes(q) ||
+                o.serviceName.toLowerCase().includes(q) ||
+                o.technicianName?.toLowerCase().includes(q)
+        );
     };
 
     const filteredPending = applyFilters(pending);
@@ -212,16 +210,40 @@ function RadiologyQueue() {
             </div>
 
             <div className="hms-rad-filterbar">
-                <div className="hms-rad-priority-row">
-                    {["ALL", "ROUTINE", "URGENT", "STAT"].map((p) => (
-                        <button
-                            key={p}
-                            onClick={() => setPriorityFilter(p)}
-                            className={`hms-rad-priority-btn ${priorityFilter === p ? "is-on" : ""}`}
-                        >
-                            {p}
-                        </button>
-                    ))}
+                <div className="hms-rad-section-tabs" role="tablist" aria-label="Queue section">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeSection === "pending"}
+                        onClick={() => setActiveSection("pending")}
+                        className={`hms-rad-section-tab ${activeSection === "pending" ? "is-active" : ""}`}
+                    >
+                        <span className="hms-rad-section-tab__dot is-amber" />
+                        Imaging Queue
+                        <span className="hms-rad-section-tab__count">{pending.length}</span>
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeSection === "inprogress"}
+                        onClick={() => setActiveSection("inprogress")}
+                        className={`hms-rad-section-tab ${activeSection === "inprogress" ? "is-active" : ""}`}
+                    >
+                        <span className="hms-rad-section-tab__dot is-emerald" />
+                        In Progress
+                        <span className="hms-rad-section-tab__count">{inProgress.length}</span>
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeSection === "awaiting"}
+                        onClick={() => setActiveSection("awaiting")}
+                        className={`hms-rad-section-tab ${activeSection === "awaiting" ? "is-active" : ""}`}
+                    >
+                        <span className="hms-rad-section-tab__dot is-slate" />
+                        Awaiting Reports
+                        <span className="hms-rad-section-tab__count">{awaiting.length}</span>
+                    </button>
                 </div>
                 <div className="hms-rad-search">
                     <Search className="w-4 h-4 hms-rad-search__icon" />
@@ -238,53 +260,52 @@ function RadiologyQueue() {
                 <div className="hms-rad-section__loading">
                     <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                 </div>
+            ) : activeSection === "pending" ? (
+                <QueueSection
+                    title="Imaging Queue (Ready for Scan)"
+                    subtitle="Click Start Scan to begin the modality run"
+                    colorMod="is-amber"
+                    orders={filteredPending}
+                    emptyText="No pending scans"
+                    emptySubtext="New orders will appear here"
+                    actionLabel="Start Scan"
+                    actionMod="is-indigo"
+                    onAction={handleMarkStarted}
+                    loadingId={markingScanned}
+                    onCollect={(o) => setCollectPayment(o)}
+                    onCancel={handleCancel}
+                />
+            ) : activeSection === "inprogress" ? (
+                <QueueSection
+                    title="In Progress"
+                    subtitle="Modality run started — mark scanned when the study is complete"
+                    colorMod="is-emerald"
+                    orders={filteredInProgress}
+                    emptyText="No scans in progress"
+                    emptySubtext="Started scans appear here until marked complete"
+                    actionLabel="Mark Scanned"
+                    actionMod="is-emerald"
+                    onAction={handleMarkScanned}
+                    loadingId={markingScanned}
+                    onCollect={(o) => setCollectPayment(o)}
+                    onCancel={handleCancel}
+                />
             ) : (
-                <>
-                    <QueueSection
-                        title="Imaging Queue (Ready for Scan)"
-                        subtitle="Click Start Scan to begin the modality run — or Mark Scanned to record a completed walk-up scan in one step"
-                        colorMod="is-amber"
-                        orders={filteredPending}
-                        emptyText="No pending scans"
-                        emptySubtext="New orders will appear here"
-                        actionLabel="Start Scan"
-                        actionMod="is-indigo"
-                        onAction={handleMarkStarted}
-                        loadingId={markingScanned}
-                        onCollect={(o) => setCollectPayment(o)}
-                        onCancel={handleCancel}
-                    />
-                    {/* Phase 7 — IN_PROGRESS: scan started, awaiting completion */}
-                    <QueueSection
-                        title="In Progress"
-                        subtitle="Modality run started — mark scanned when the study is complete"
-                        colorMod="is-emerald"
-                        orders={filteredInProgress}
-                        emptyText="No scans in progress"
-                        emptySubtext="Started scans appear here until marked complete"
-                        actionLabel="Mark Scanned"
-                        actionMod="is-emerald"
-                        onAction={handleMarkScanned}
-                        loadingId={markingScanned}
-                        onCollect={(o) => setCollectPayment(o)}
-                        onCancel={handleCancel}
-                    />
-                    <QueueSection
-                        title="Awaiting Reports"
-                        subtitle="Scans completed — radiologist findings pending"
-                        colorMod="is-slate"
-                        orders={filteredAwaiting}
-                        emptyText="No scans awaiting reports"
-                        emptySubtext="Completed scans will appear here"
-                        actionLabel="Write Report"
-                        actionMod="is-slate"
-                        onAction={(o) => setWriteReport(o)}
-                        loadingId={markingScanned}
-                        onMarkCompleted={handleMarkCompleted}
-                        onCollect={(o) => setCollectPayment(o)}
-                        onCancel={handleCancel}
-                    />
-                </>
+                <QueueSection
+                    title="Awaiting Reports"
+                    subtitle="Scans completed — radiologist findings pending"
+                    colorMod="is-slate"
+                    orders={filteredAwaiting}
+                    emptyText="No scans awaiting reports"
+                    emptySubtext="Completed scans will appear here"
+                    actionLabel="Write Report"
+                    actionMod="is-slate"
+                    onAction={(o) => setWriteReport(o)}
+                    loadingId={markingScanned}
+                    onMarkCompleted={handleMarkCompleted}
+                    onCollect={(o) => setCollectPayment(o)}
+                    onCancel={handleCancel}
+                />
             )}
 
             {showNewModal && (

@@ -7085,6 +7085,80 @@
     color: var(--hms-white);
 }
 
+/* Section tabs — top-level switcher between Collection / Awaiting / In Progress
+   queues on the lab + radiology pages (Phase 9). Replaces the priority pills;
+   the visual triage by priority lives on each row badge instead. Each tab
+   carries a count chip so a tech sees the workload at a glance. */
+.hms-rad-section-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: var(--hms-gray-50);
+    border: 1px solid var(--hms-gray-100);
+    border-radius: 10px;
+    width: fit-content;
+}
+
+.hms-rad-section-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hms-gray-600);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    font-family: var(--hms-font-family);
+    white-space: nowrap;
+}
+
+.hms-rad-section-tab:hover { color: var(--hms-gray-900); }
+
+.hms-rad-section-tab.is-active {
+    background: var(--hms-white);
+    color: var(--hms-gray-900);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 0 0 1px var(--hms-gray-200);
+}
+
+.hms-rad-section-tab__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--hms-gray-100);
+    color: var(--hms-gray-700);
+    font-variant-numeric: tabular-nums;
+}
+
+.hms-rad-section-tab.is-active .hms-rad-section-tab__count {
+    background: var(--hms-gray-900);
+    color: var(--hms-white);
+}
+
+/* Tone-coloured dot to echo each section's section-list border tone
+   (amber → Collection, slate → Awaiting, emerald → In Progress). */
+.hms-rad-section-tab__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--hms-gray-400);
+    flex-shrink: 0;
+}
+.hms-rad-section-tab__dot.is-amber   { background: #f59e0b; }
+.hms-rad-section-tab__dot.is-slate   { background: var(--hms-gray-500); }
+.hms-rad-section-tab__dot.is-indigo  { background: #6366f1; }
+.hms-rad-section-tab__dot.is-emerald { background: #10b981; }
+
 .hms-rad-search {
     position: relative;
     flex: 1;
