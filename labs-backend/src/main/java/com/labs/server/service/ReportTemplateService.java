@@ -34,8 +34,16 @@ public class ReportTemplateService {
 
     private final ReportTemplateRepository repository;
     private final AuditService auditService;
+    // Separate bean — proxy applies, REQUIRES_NEW writable tx for the lazy seed.
+    private final ReportTemplateSeeder seeder;
 
     public List<ReportTemplateDTO> list(UUID hospitalId) {
+        // Lazy-seed a real persistent default the first time the page opens
+        // for this hospital — Templates UI is never empty, the auto-built
+        // "ZenoLabs Default" shows up alongside any custom templates added.
+        if (repository.countByHospitalId(hospitalId) == 0) {
+            seeder.seedDefaultFor(hospitalId);
+        }
         return repository.findByHospitalIdOrderByIsDefaultDescNameAsc(hospitalId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }

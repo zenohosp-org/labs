@@ -29,42 +29,57 @@ import {
 
 const PAGE_SIZE = 30;
 
+// Bounded by V11 CHECK constraint on lab_services.discipline.
 const DISCIPLINE_OPTIONS = [
-    { value: "PATHOLOGY", label: "Pathology" },
-    { value: "RADIOLOGY", label: "Radiology" },
-    { value: "CYTOLOGY", label: "Cytology" },
+    { value: "PATHOLOGY",      label: "Pathology" },
+    { value: "RADIOLOGY",      label: "Radiology" },
+    { value: "CYTOLOGY",       label: "Cytology" },
     { value: "HISTOPATHOLOGY", label: "Histopathology" },
+    { value: "MICROBIOLOGY",   label: "Microbiology" },
+    { value: "IMMUNOLOGY",     label: "Immunology" },
 ];
 
 const VALUE_TYPE_OPTIONS = [
-    { value: "NUMERIC", label: "Numeric" },
-    { value: "TEXT", label: "Text" },
-    { value: "CODED", label: "Coded" },
-    { value: "RATIO", label: "Ratio (e.g. 1:160)" },
+    { value: "NUMERIC", label: "Numeric (e.g. Hb 13.2)" },
+    { value: "TEXT",    label: "Text / Narrative (e.g. radiology findings)" },
+    { value: "CODED",   label: "Coded (e.g. Positive / Negative / Reactive)" },
+    { value: "RATIO",   label: "Ratio (e.g. 1:160 titre)" },
+    { value: "BOOLEAN", label: "Boolean (Yes / No)" },
 ];
 
+// Common Indian-lab specimen sources. Order = frequency of use.
 const SPECIMEN_OPTIONS = [
-    { value: "", label: "—" },
-    { value: "BLOOD", label: "Blood" },
-    { value: "URINE", label: "Urine" },
-    { value: "STOOL", label: "Stool" },
-    { value: "SWAB", label: "Swab" },
-    { value: "CSF", label: "CSF" },
-    { value: "TISSUE", label: "Tissue" },
-    { value: "OTHER", label: "Other" },
+    { value: "",            label: "—" },
+    { value: "BLOOD",       label: "Blood (Whole)" },
+    { value: "SERUM",       label: "Serum" },
+    { value: "PLASMA",      label: "Plasma" },
+    { value: "URINE",       label: "Urine" },
+    { value: "STOOL",       label: "Stool" },
+    { value: "SPUTUM",      label: "Sputum" },
+    { value: "SWAB",        label: "Swab (Throat / Nasal / Wound)" },
+    { value: "CSF",         label: "CSF" },
+    { value: "BODY_FLUID",  label: "Body fluid (Pleural / Ascitic / Synovial)" },
+    { value: "TISSUE",      label: "Tissue (Biopsy / Resection)" },
+    { value: "BONE_MARROW", label: "Bone marrow" },
+    { value: "SEMEN",       label: "Semen" },
+    { value: "OTHER",       label: "Other" },
 ];
 
+// Indian-lab tube/container conventions. NACL = sodium citrate for ESR.
 const CONTAINER_OPTIONS = [
-    { value: "", label: "—" },
-    { value: "EDTA", label: "EDTA" },
-    { value: "CITRATE", label: "Citrate" },
-    { value: "HEPARIN", label: "Heparin" },
-    { value: "PLAIN", label: "Plain / Serum" },
-    { value: "FLUORIDE", label: "Fluoride" },
-    { value: "URINE_CUP", label: "Urine cup" },
+    { value: "",          label: "—" },
+    { value: "EDTA",      label: "EDTA (Lavender) — CBC / HbA1c" },
+    { value: "PLAIN",     label: "Plain / Serum (Red) — Biochem / Serology" },
+    { value: "GEL_CLOT",  label: "Gel clot (Yellow / SST) — Biochem" },
+    { value: "FLUORIDE",  label: "Fluoride (Grey) — Glucose / FBS" },
+    { value: "CITRATE",   label: "Citrate (Blue) — PT / INR / aPTT" },
+    { value: "HEPARIN",   label: "Heparin (Green) — Ammonia / Electrolytes" },
+    { value: "ESR",       label: "ESR (Black / NACL)" },
+    { value: "URINE_CUP", label: "Urine cup (Yellow lid)" },
     { value: "STOOL_CUP", label: "Stool cup" },
-    { value: "SWAB", label: "Swab" },
-    { value: "OTHER", label: "Other" },
+    { value: "SWAB",      label: "Swab transport medium" },
+    { value: "FORMALIN",  label: "Formalin jar — Histopath" },
+    { value: "OTHER",     label: "Other" },
 ];
 
 const empty = {
@@ -496,19 +511,35 @@ export default function LabServices() {
                         <Input value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="HAEMATOLOGY" />
                     </FormGroup>
                     <FormGroup label="Discipline">
-                        <Select value={form.discipline} onChange={(e) => set("discipline", e.target.value)} options={DISCIPLINE_OPTIONS} />
+                        <Select value={form.discipline} onChange={(e) => set("discipline", e.target.value)}>
+                            {DISCIPLINE_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </Select>
                     </FormGroup>
                     <FormGroup label="Value type">
-                        <Select value={form.valueType} onChange={(e) => set("valueType", e.target.value)} options={VALUE_TYPE_OPTIONS} />
+                        <Select value={form.valueType} onChange={(e) => set("valueType", e.target.value)}>
+                            {VALUE_TYPE_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </Select>
                     </FormGroup>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Specimen kind">
-                        <Select value={form.specimenKind} onChange={(e) => set("specimenKind", e.target.value)} options={SPECIMEN_OPTIONS} />
+                        <Select value={form.specimenKind} onChange={(e) => set("specimenKind", e.target.value)}>
+                            {SPECIMEN_OPTIONS.map((o) => (
+                                <option key={o.value || "blank"} value={o.value}>{o.label}</option>
+                            ))}
+                        </Select>
                     </FormGroup>
                     <FormGroup label="Default container">
-                        <Select value={form.defaultContainerType} onChange={(e) => set("defaultContainerType", e.target.value)} options={CONTAINER_OPTIONS} />
+                        <Select value={form.defaultContainerType} onChange={(e) => set("defaultContainerType", e.target.value)}>
+                            {CONTAINER_OPTIONS.map((o) => (
+                                <option key={o.value || "blank"} value={o.value}>{o.label}</option>
+                            ))}
+                        </Select>
                     </FormGroup>
                     <FormGroup label="Default volume (mL)">
                         <Input type="number" step="any" value={form.defaultVolumeMl} onChange={(e) => set("defaultVolumeMl", e.target.value)} />
