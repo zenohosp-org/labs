@@ -22,7 +22,7 @@ import WriteReportModal from "./WriteReportModal";
 import CollectPaymentModal from "./CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
 import { Menu } from "@/components/ui";
-import { MoreHorizontal, PlayCircle, Edit3 } from "lucide-react";
+import { MoreHorizontal, PlayCircle, Edit3, XCircle, CheckCircle2 as CheckCircle2Icon } from "lucide-react";
 
 // HMS-parity status badge — single pill shown in the STATUS column per row.
 const STATUS_META = {
@@ -31,6 +31,7 @@ const STATUS_META = {
     AWAITING_REPORT:  { label: "Awaiting Report",  cls: "is-awaiting" },
     REPORT_GENERATED: { label: "Reported",         cls: "is-reported" },
     BILLED:           { label: "Billed",           cls: "is-billed" },
+    CANCELLED:        { label: "Cancelled",        cls: "is-billed" },
 };
 
 const PRIORITY_META = {
@@ -50,7 +51,6 @@ function RadiologyQueue() {
     const [showNewModal, setShowNewModal] = useState(false);
     const [writeReport, setWriteReport] = useState(null);
     const [collectPayment, setCollectPayment] = useState(null);
-    const [actionMenu, setActionMenu] = useState(null);
     const [markingScanned, setMarkingScanned] = useState(null);
 
     const load = useCallback(async () => {
@@ -76,7 +76,6 @@ function RadiologyQueue() {
 
     const handleMarkScanned = async (order) => {
         setMarkingScanned(order.id);
-        setActionMenu(null);
         try {
             await radiologyApi.markScanned(order.id);
             notify("Marked as scanned — moved to Awaiting Report", "success");
@@ -91,13 +90,45 @@ function RadiologyQueue() {
     // Phase 7 — start the modality run (PENDING_SCAN → IN_PROGRESS)
     const handleMarkStarted = async (order) => {
         setMarkingScanned(order.id);
-        setActionMenu(null);
         try {
             await radiologyApi.markStarted(order.id);
             notify("Scan started — moved to In Progress", "success");
             load();
         } catch (err) {
             notify(err?.response?.data?.message || "Failed to start scan", "error");
+        } finally {
+            setMarkingScanned(null);
+        }
+    };
+
+    // Phase 9 — Mark Completed (AWAITING_REPORT / IN_PROGRESS → REPORT_GENERATED).
+    const handleMarkCompleted = async (order) => {
+        setMarkingScanned(order.id);
+        try {
+            await radiologyApi.markCompleted(order.id);
+            notify("Report completed — billed to active invoice if priced", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to mark completed", "error");
+        } finally {
+            setMarkingScanned(null);
+        }
+    };
+
+    // Phase 9 — soft cancel.
+    const handleCancel = async (order) => {
+        const reason = window.prompt(
+            `Cancel ${order.serviceName} for ${order.patientName}?\n\nOptional reason (audit):`,
+            ""
+        );
+        if (reason === null) return;
+        setMarkingScanned(order.id);
+        try {
+            await radiologyApi.cancelOrder(order.id, reason);
+            notify("Order cancelled", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to cancel order", "error");
         } finally {
             setMarkingScanned(null);
         }
@@ -128,7 +159,7 @@ function RadiologyQueue() {
     const filteredAwaiting = applyFilters(awaiting);
 
     return (
-        <div className="hms-rad-page" onClick={() => setActionMenu(null)}>
+        <div className="hms-rad-page">
             <div className="hms-rad-page__head">
                 <div>
                     <h1 className="hms-rad-page__title">
@@ -220,10 +251,8 @@ function RadiologyQueue() {
                         actionMod="is-indigo"
                         onAction={handleMarkStarted}
                         loadingId={markingScanned}
-                        actionMenu={actionMenu}
-                        setActionMenu={setActionMenu}
                         onCollect={(o) => setCollectPayment(o)}
-                        showScanAction
+                        onCancel={handleCancel}
                     />
                     {/* Phase 7 — IN_PROGRESS: scan started, awaiting completion */}
                     <QueueSection
@@ -237,9 +266,8 @@ function RadiologyQueue() {
                         actionMod="is-emerald"
                         onAction={handleMarkScanned}
                         loadingId={markingScanned}
-                        actionMenu={actionMenu}
-                        setActionMenu={setActionMenu}
                         onCollect={(o) => setCollectPayment(o)}
+                        onCancel={handleCancel}
                     />
                     <QueueSection
                         title="Awaiting Reports"
@@ -251,10 +279,10 @@ function RadiologyQueue() {
                         actionLabel="Write Report"
                         actionMod="is-slate"
                         onAction={(o) => setWriteReport(o)}
-                        loadingId={null}
-                        actionMenu={actionMenu}
-                        setActionMenu={setActionMenu}
+                        loadingId={markingScanned}
+                        onMarkCompleted={handleMarkCompleted}
                         onCollect={(o) => setCollectPayment(o)}
+                        onCancel={handleCancel}
                     />
                 </>
             )}
@@ -304,7 +332,8 @@ function QueueSection({
     onAction,
     loadingId,
     onCollect,
-    showScanAction,
+    onMarkCompleted,   // Phase 9 — Awaiting Reports only (radiology)
+    onCancel,          // Phase 9 — all active sections
 }) {
     return (
         <div className={`hms-rad-section ${colorMod}`}>
@@ -390,19 +419,14 @@ function QueueSection({
                                     <Menu
                                         triggerLabel="Order actions"
                                         triggerIcon={<MoreHorizontal className="w-4 h-4" />}
-                                        items={[
-                                            {
-                                                key: "primary",
-                                                label: loadingId === order.id ? "Updating…" : actionLabel,
-                                                icon: actionLabel === "Write Report"
-                                                    ? <Edit3 className="w-4 h-4" />
-                                                    : actionLabel === "Start Scan"
-                                                        ? <PlayCircle className="w-4 h-4" />
-                                                        : <ScanLine className="w-4 h-4" />,
-                                                disabled: loadingId === order.id,
-                                                onClick: () => onAction(order),
-                                            },
-                                        ]}
+                                        items={buildActionItems({
+                                            order,
+                                            actionLabel,
+                                            onAction,
+                                            loadingId,
+                                            onMarkCompleted,
+                                            onCancel,
+                                        })}
                                     />
                                 </div>
                             </div>
@@ -412,6 +436,55 @@ function QueueSection({
             )}
         </div>
     );
+}
+
+/**
+ * Build kebab menu items for a radiology row (Phase 9 — simplified):
+ *
+ *   Pending Scan      → Start Scan     · Cancel
+ *   In Progress       → Mark Scanned   · Cancel
+ *   Awaiting Reports  → Write Report   · Mark Completed · Cancel
+ */
+function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompleted, onCancel }) {
+    const items = [];
+
+    if (onAction) {
+        items.push({
+            key: "primary",
+            label: loadingId === order.id ? "Updating…" : actionLabel,
+            icon: actionLabel === "Write Report"
+                ? <Edit3 className="w-4 h-4" />
+                : actionLabel === "Start Scan"
+                    ? <PlayCircle className="w-4 h-4" />
+                    : <CheckCircle2Icon className="w-4 h-4" />,
+            disabled: loadingId === order.id,
+            onClick: () => onAction(order),
+        });
+    }
+
+    if (onMarkCompleted && order.status === "AWAITING_REPORT") {
+        items.push({
+            key: "complete",
+            label: "Mark Completed",
+            icon: <CheckCircle2Icon className="w-4 h-4" />,
+            disabled: loadingId === order.id,
+            onClick: () => onMarkCompleted(order),
+        });
+    }
+
+    if (onCancel) {
+        if (items.length > 0) items.push({ divider: true });
+        items.push({
+            key: "cancel",
+            label: "Cancel order",
+            icon: <XCircle className="w-4 h-4" />,
+            tone: "danger",
+            disabled: loadingId === order.id,
+            onClick: () => onCancel(order),
+        });
+    }
+
+    return items;
 }
 
 export { RadiologyQueue as default };

@@ -81,6 +81,16 @@ export const radiologyApi = {
         const { data } = await api.patch(`/api/radiology/${id}/report`, { findings, observation });
         return data;
     },
+    /** Phase 9 — IN_PROGRESS/AWAITING_REPORT → REPORT_GENERATED, guarded on findings text. */
+    markCompleted: async (id) => {
+        const { data } = await api.patch(`/api/radiology/${id}/complete`);
+        return data;
+    },
+    /** Phase 9 — soft cancel. Allowed from PENDING_SCAN / AWAITING_REPORT / IN_PROGRESS. */
+    cancelOrder: async (id, reason) => {
+        const { data } = await api.patch(`/api/radiology/${id}/cancel`, reason ? { reason } : {});
+        return data;
+    },
 };
 
 // Pathology / lab-orders endpoints. Mirrors radiologyApi shape so the queue
@@ -126,6 +136,17 @@ export const labApi = {
         const { data } = await api.patch(`/api/lab/${id}/report`, { findings, observation });
         return data;
     },
+    /** Phase 9 — IN_PROGRESS → REPORT_GENERATED, guarded on report data presence. */
+    markCompleted: async (id) => {
+        const { data } = await api.patch(`/api/lab/${id}/complete`);
+        return data;
+    },
+    /** Phase 9 — soft cancel. Allowed from PENDING_COLLECTION / AWAITING_REPORT / IN_PROGRESS. */
+    cancelOrder: async (id, reason) => {
+        const { data } = await api.patch(`/api/lab/${id}/cancel`, reason ? { reason } : {});
+        return data;
+    },
+    /** Legacy hard-DELETE — only used for PENDING_COLLECTION orphans (zero clinical data). */
     cancel: async (id) => {
         await api.delete(`/api/lab/${id}`);
     },

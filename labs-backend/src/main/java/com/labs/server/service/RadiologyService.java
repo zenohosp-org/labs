@@ -234,6 +234,84 @@ public class RadiologyService {
         return toDTO(saved);
     }
 
+    /**
+     * Phase 9 — Mark Completed for radiology. AWAITING_REPORT or IN_PROGRESS
+     * → REPORT_GENERATED, gated on findings text presence (radiology has no
+     * per-analyte rows). Auto-bills via the same seam as generateReport.
+     */
+    @Transactional
+    public RadiologyOrderDTO markCompleted(Long id) {
+        RadiologyOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != RadiologyStatus.AWAITING_REPORT
+                && order.getStatus() != RadiologyStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                    "Order is not in AWAITING_REPORT or IN_PROGRESS state — current: "
+                            + order.getStatus());
+        }
+        boolean hasFindings = order.getFindings() != null && !order.getFindings().isBlank();
+        if (!hasFindings) {
+            throw new RuntimeException(
+                    "No report data — click Write Report to enter findings first.");
+        }
+        RadiologyStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(RadiologyStatus.REPORT_GENERATED);
+        order.setReportedAt(now);
+        order.setReportedByUserId(actor.userId);
+        order.setReportedByName(actor.name);
+        if (order.getReportId() == null) {
+            order.setReportId(generateReportId());
+        }
+        RadiologyOrder saved = orderRepository.save(order);
+
+        try {
+            billingService.billRadiologyOrder(saved);
+        } catch (Exception e) {
+            LoggerFactory.getLogger(RadiologyService.class)
+                    .warn("Auto-bill failed for radiology order {}: {}", saved.getId(), e.getMessage());
+        }
+
+        auditService.record("RadiologyOrder", saved.getId().toString(), "REPORT_GENERATED",
+                saved.getHospital().getId(),
+                Map.of("status", previous.name()),
+                Map.of("status", RadiologyStatus.REPORT_GENERATED.name(),
+                        "reportId", saved.getReportId()));
+        return toDTO(saved);
+    }
+
+    /** Phase 9 — soft cancel. Same semantics as LabService.cancelOrder. */
+    @Transactional
+    public RadiologyOrderDTO cancelOrder(Long id, String reason) {
+        RadiologyOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        RadiologyStatus cur = order.getStatus();
+        if (cur != RadiologyStatus.PENDING_SCAN
+                && cur != RadiologyStatus.AWAITING_REPORT
+                && cur != RadiologyStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                    "Cannot cancel — order is already " + cur + " (terminal state).");
+        }
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(RadiologyStatus.CANCELLED);
+        order.setCancelledAt(now);
+        order.setCancelledByUserId(actor.userId);
+        order.setCancelledByName(actor.name);
+        if (reason != null && !reason.isBlank()) {
+            order.setCancellationReason(reason.trim());
+        }
+        RadiologyOrder saved = orderRepository.save(order);
+
+        auditService.record("RadiologyOrder", saved.getId().toString(), "CANCEL",
+                saved.getHospital().getId(),
+                Map.of("status", cur.name()),
+                Map.of("status", RadiologyStatus.CANCELLED.name(),
+                        "reason", reason != null ? reason : ""));
+        return toDTO(saved);
+    }
+
     @Transactional
     public RadiologyOrderDTO generateReport(Long id, RadiologyReportRequest req) {
         RadiologyOrder order = orderRepository.findById(id)
@@ -369,6 +447,10 @@ public class RadiologyService {
                 .reportedAt(o.getReportedAt())
                 .reportedByUserId(o.getReportedByUserId())
                 .reportedByName(o.getReportedByName())
+                .cancelledAt(o.getCancelledAt())
+                .cancelledByUserId(o.getCancelledByUserId())
+                .cancelledByName(o.getCancelledByName())
+                .cancellationReason(o.getCancellationReason())
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())

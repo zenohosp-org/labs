@@ -11,7 +11,10 @@ public enum RadiologyStatus {
      *   AWAITING_REPORT  → /start →  IN_PROGRESS  → /report →  REPORT_GENERATED
      * Stored at id=5 so existing rows (1..4) never need renumbering.
      */
-    IN_PROGRESS(5);
+    IN_PROGRESS(5),
+
+    /** Phase 9 — same semantics as LabStatus.CANCELLED. Terminal once set. */
+    CANCELLED(6);
 
     public final int id;
 

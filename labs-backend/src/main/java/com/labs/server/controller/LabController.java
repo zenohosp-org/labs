@@ -95,9 +95,30 @@ public class LabController {
     }
 
     /**
-     * Cancel a lab order. Mirrors HMS's existing IPD lab-orders cancel
-     * semantics — only allowed before the sample is collected. Once the
-     * sample is in the analyser the order is locked.
+     * Phase 9 — Mark Completed. IN_PROGRESS → REPORT_GENERATED gated on
+     * report data presence (findings text OR at least one analyte result).
+     */
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<LabOrderDTO> markCompleted(@PathVariable Long id) {
+        return ResponseEntity.ok(labService.markCompleted(id));
+    }
+
+    /**
+     * Phase 9 — soft cancel. PENDING_COLLECTION / AWAITING_REPORT /
+     * IN_PROGRESS → CANCELLED with optional reason. Body is {"reason": "…"}.
+     */
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<LabOrderDTO> cancelOrder(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(labService.cancelOrder(id, reason));
+    }
+
+    /**
+     * Hard DELETE — only allowed when no clinical data exists (PENDING_COLLECTION,
+     * never collected). For all other states use PATCH /cancel above. Legacy
+     * endpoint retained for back-compat with HMS's existing IPD cancel button.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {

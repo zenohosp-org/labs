@@ -144,6 +144,19 @@ public class LabOrder {
     @Column(name = "reported_by_name", length = 200)
     private String reportedByName;
 
+    // Phase 9 — soft-cancel actor/timestamp triple + optional reason text.
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancelled_by_user_id")
+    private UUID cancelledByUserId;
+
+    @Column(name = "cancelled_by_name", length = 200)
+    private String cancelledByName;
+
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     @Column(columnDefinition = "TEXT")
     private String findings;
 

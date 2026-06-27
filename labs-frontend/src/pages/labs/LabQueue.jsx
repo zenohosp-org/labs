@@ -10,20 +10,16 @@ import {
     CheckCircle2,
     Search,
     Loader2,
-    User,
     Stethoscope,
     AlertTriangle,
     Zap,
     Droplet,
-    Beaker,
 } from "lucide-react";
 import LabWriteReportModal from "./LabWriteReportModal";
 import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
-import SpecimensModal from "@/components/modals/SpecimensModal";
-import ReportActionsModal from "@/components/modals/ReportActionsModal";
 import { Menu } from "@/components/ui";
-import { FileSignature, Inbox, Activity, MoreHorizontal, CheckCircle2 as CheckCircle2Icon, PlayCircle, Edit3 } from "lucide-react";
+import { MoreHorizontal, CheckCircle2 as CheckCircle2Icon, PlayCircle, Edit3, XCircle } from "lucide-react";
 
 // HMS-parity status badge — single pill shown in the STATUS column per row.
 const STATUS_META = {
@@ -32,6 +28,7 @@ const STATUS_META = {
     IN_PROGRESS:        { label: "In Progress",        cls: "is-progress" },
     REPORT_GENERATED:   { label: "Reported",           cls: "is-reported" },
     BILLED:             { label: "Billed",             cls: "is-billed" },
+    CANCELLED:          { label: "Cancelled",          cls: "is-billed" },
 };
 
 const PRIORITY_META = {
@@ -61,8 +58,6 @@ function LabQueue() {
     const [collectPayment, setCollectPayment] = useState(null);
     const [markingCollected, setMarkingCollected] = useState(null);
     const [actingOn, setActingOn] = useState(null);   // Phase 7 — receive / start
-    const [specimensFor, setSpecimensFor] = useState(null);
-    const [reportFor, setReportFor] = useState(null);
 
     const load = useCallback(async () => {
         if (!user?.hospitalId) return;
@@ -98,20 +93,7 @@ function LabQueue() {
         }
     };
 
-    // Phase 7 — receive (custody at lab desk) and start (analyser run).
-    const handleMarkReceived = async (order) => {
-        setActingOn(order.id);
-        try {
-            await labApi.markReceived(order.id);
-            notify("Sample received at lab — actor + timestamp stamped (HIPAA)", "success");
-            load();
-        } catch (err) {
-            notify(err?.response?.data?.message || "Failed to mark received", "error");
-        } finally {
-            setActingOn(null);
-        }
-    };
-
+    // Phase 7/9 — start (analyser run) + complete + cancel.
     const handleMarkStarted = async (order) => {
         setActingOn(order.id);
         try {
@@ -120,6 +102,41 @@ function LabQueue() {
             load();
         } catch (err) {
             notify(err?.response?.data?.message || "Failed to start test", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
+    // Phase 9 — single transition IN_PROGRESS → REPORT_GENERATED. Backend
+    // rejects when neither findings text nor analyte rows exist; toast carries
+    // the exact server message so the tech knows to click Write Report first.
+    const handleMarkCompleted = async (order) => {
+        setActingOn(order.id);
+        try {
+            await labApi.markCompleted(order.id);
+            notify("Report completed — billed to active invoice if priced", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to mark completed", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
+    // Phase 9 — soft cancel. Confirm prompt is intentional: terminal action.
+    const handleCancel = async (order) => {
+        const reason = window.prompt(
+            `Cancel ${order.serviceName} for ${order.patientName}?\n\nOptional reason (audit):`,
+            ""
+        );
+        if (reason === null) return;  // user clicked Cancel on the prompt
+        setActingOn(order.id);
+        try {
+            await labApi.cancelOrder(order.id, reason);
+            notify("Order cancelled", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to cancel order", "error");
         } finally {
             setActingOn(null);
         }
@@ -240,12 +257,11 @@ function LabQueue() {
                         onAction={handleMarkCollected}
                         loadingId={markingCollected}
                         onCollect={(o) => setCollectPayment(o)}
-                        onSpecimens={(o) => setSpecimensFor(o)}
-                        showCollectAction
+                        onCancel={handleCancel}
                     />
                     <QueueSection
                         title="Awaiting Reports"
-                        subtitle="Sample processed — receive at lab, then start the analyser"
+                        subtitle="Sample collected — start the analyser when ready"
                         colorMod="is-slate"
                         orders={filteredAwaiting}
                         emptyText="No samples awaiting reports"
@@ -254,14 +270,12 @@ function LabQueue() {
                         actionMod="is-indigo"
                         onAction={handleMarkStarted}
                         loadingId={actingOn}
-                        onReceive={handleMarkReceived}
                         onCollect={(o) => setCollectPayment(o)}
-                        onSpecimens={(o) => setSpecimensFor(o)}
-                        onReport={(o) => setReportFor(o)}
+                        onCancel={handleCancel}
                     />
                     <QueueSection
                         title="In Progress"
-                        subtitle="Analyser run started — write the report when results are in"
+                        subtitle="Analyser run started — write the report, then mark completed"
                         colorMod="is-emerald"
                         orders={filteredInProgress}
                         emptyText="No tests in progress"
@@ -269,10 +283,10 @@ function LabQueue() {
                         actionLabel="Write Report"
                         actionMod="is-emerald"
                         onAction={(o) => setWriteReport(o)}
-                        loadingId={null}
+                        loadingId={actingOn}
+                        onMarkCompleted={handleMarkCompleted}
                         onCollect={(o) => setCollectPayment(o)}
-                        onSpecimens={(o) => setSpecimensFor(o)}
-                        onReport={(o) => setReportFor(o)}
+                        onCancel={handleCancel}
                     />
                 </>
             )}
@@ -297,19 +311,6 @@ function LabQueue() {
                     }}
                 />
             )}
-            {specimensFor && (
-                <SpecimensModal
-                    order={specimensFor}
-                    onClose={() => setSpecimensFor(null)}
-                    onChanged={load}
-                />
-            )}
-            {reportFor && (
-                <ReportActionsModal
-                    order={reportFor}
-                    onClose={() => setReportFor(null)}
-                />
-            )}
         </div>
     );
 }
@@ -326,10 +327,8 @@ function QueueSection({
     onAction,
     loadingId,
     onCollect,
-    onSpecimens,
-    onReport,
-    onReceive,       // Phase 7 — receive button shown when order is AWAITING_REPORT and not yet receivedAt
-    showCollectAction,
+    onMarkCompleted,    // Phase 9 — In Progress section only
+    onCancel,           // Phase 9 — all active sections
 }) {
     return (
         <div className={`hms-rad-section ${colorMod}`}>
@@ -425,9 +424,8 @@ function QueueSection({
                                             actionLabel,
                                             onAction,
                                             loadingId,
-                                            onReceive,
-                                            onSpecimens,
-                                            onReport,
+                                            onMarkCompleted,
+                                            onCancel,
                                         })}
                                     />
                                 </div>
@@ -441,15 +439,20 @@ function QueueSection({
 }
 
 /**
- * Build the kebab menu items for one order row. Mirrors the HMS appointments
- * ActionMenu pattern — every available action is a menu item, none stay as
- * inline buttons. Item visibility is the same filter logic that used to gate
- * each inline button.
+ * Build the kebab menu items for one order row (Phase 9 — simplified):
+ *
+ *   Collection Queue  → Mark Collected · Cancel
+ *   Awaiting Reports  → Start Test     · Cancel
+ *   In Progress       → Write Report   · Mark Completed · Cancel
+ *
+ * Specimens tracker, Receive button, and Sign/Authorise/Amend ceremony were
+ * retired in Phase 9 — kept the backend audit hooks, dropped the bench-tech
+ * UI surface that nobody used.
  */
-function buildActionItems({ order, actionLabel, onAction, loadingId, onReceive, onSpecimens, onReport }) {
+function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompleted, onCancel }) {
     const items = [];
 
-    // Primary action — the workflow-stage CTA (Mark Collected / Start Test / Write Report).
+    // Primary action (Mark Collected / Start Test / Write Report).
     if (onAction) {
         items.push({
             key: "primary",
@@ -464,36 +467,27 @@ function buildActionItems({ order, actionLabel, onAction, loadingId, onReceive, 
         });
     }
 
-    // Phase 7 — Receive: AWAITING_REPORT only, before receivedAt is stamped.
-    if (onReceive && order.status === "AWAITING_REPORT" && !order.receivedAt) {
+    // Phase 9 — Mark Completed (In Progress section only).
+    if (onMarkCompleted && order.status === "IN_PROGRESS") {
         items.push({
-            key: "receive",
-            label: "Receive at lab",
-            icon: <Inbox className="w-4 h-4" />,
+            key: "complete",
+            label: "Mark Completed",
+            icon: <CheckCircle2Icon className="w-4 h-4" />,
             disabled: loadingId === order.id,
-            onClick: () => onReceive(order),
+            onClick: () => onMarkCompleted(order),
         });
     }
 
-    if (items.length > 0 && (onSpecimens || onReport)) {
-        items.push({ divider: true });
-    }
-
-    if (onSpecimens) {
+    // Phase 9 — Cancel (all active sections). Destructive tone.
+    if (onCancel) {
+        if (items.length > 0) items.push({ divider: true });
         items.push({
-            key: "specimens",
-            label: "Specimens",
-            icon: <Beaker className="w-4 h-4" />,
-            onClick: () => onSpecimens(order),
-        });
-    }
-
-    if (onReport) {
-        items.push({
-            key: "report",
-            label: "Report (sign / download PDF)",
-            icon: <FileSignature className="w-4 h-4" />,
-            onClick: () => onReport(order),
+            key: "cancel",
+            label: "Cancel order",
+            icon: <XCircle className="w-4 h-4" />,
+            tone: "danger",
+            disabled: loadingId === order.id,
+            onClick: () => onCancel(order),
         });
     }
 

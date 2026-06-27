@@ -11,7 +11,16 @@ public enum LabStatus {
      *   AWAITING_REPORT  → /start →  IN_PROGRESS  → /report →  REPORT_GENERATED
      * Stored at id=5 so existing rows (which use 1..4) never need renumbering.
      */
-    IN_PROGRESS(5);
+    IN_PROGRESS(5),
+
+    /**
+     * Phase 9 — order cancelled by the lab. Allowed transitions:
+     *   PENDING_COLLECTION → CANCELLED  (no clinical data captured)
+     *   AWAITING_REPORT    → CANCELLED  (sample collected; reason captured)
+     *   IN_PROGRESS        → CANCELLED  (analyser run aborted)
+     * Terminal once set. Audit row carries reason via reason_notes.
+     */
+    CANCELLED(6);
 
     public final int id;
 

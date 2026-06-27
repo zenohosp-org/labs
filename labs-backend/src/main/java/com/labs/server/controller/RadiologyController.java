@@ -88,6 +88,21 @@ public class RadiologyController {
         return ResponseEntity.ok(radiologyService.generateReport(id, request));
     }
 
+    /** Phase 9 — Mark Completed. Gated on findings text presence. */
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<RadiologyOrderDTO> markCompleted(@PathVariable Long id) {
+        return ResponseEntity.ok(radiologyService.markCompleted(id));
+    }
+
+    /** Phase 9 — soft cancel. Body is {"reason": "…"}. */
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<RadiologyOrderDTO> cancelOrder(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(radiologyService.cancelOrder(id, reason));
+    }
+
     private String resolveFullName(Authentication auth) {
         if (auth == null || auth.getCredentials() == null) return "System";
         try {

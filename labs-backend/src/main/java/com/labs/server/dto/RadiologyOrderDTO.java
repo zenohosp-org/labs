@@ -44,6 +44,12 @@ public class RadiologyOrderDTO {
     private UUID reportedByUserId;
     private String reportedByName;
 
+    // Phase 9 — soft-cancel triple.
+    private LocalDateTime cancelledAt;
+    private UUID cancelledByUserId;
+    private String cancelledByName;
+    private String cancellationReason;
+
     private String findings;
     private String observation;
     private String reportId;

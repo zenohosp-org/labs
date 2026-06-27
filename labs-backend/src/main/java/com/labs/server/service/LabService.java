@@ -14,6 +14,7 @@ import com.labs.server.repository.AdmissionRepository;
 import com.labs.server.repository.HospitalRepository;
 import com.labs.server.repository.LabOrderRepository;
 import com.labs.server.repository.LabServiceRepository;
+import com.labs.server.repository.LabTestResultRepository;
 import com.labs.server.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,8 @@ public class LabService {
     private final AdmissionRepository admissionRepository;
     // Phase 8.1 — catalog resolution at order-create time.
     private final LabServiceRepository labServiceRepository;
+    // Phase 9 — Mark Completed guard checks per-analyte result presence.
+    private final LabTestResultRepository labTestResultRepository;
 
     // @Lazy avoids the constructor-time cycle: LabBillingService injects
     // LabOrderRepository and now LabService also depends on it.
@@ -315,6 +318,91 @@ public class LabService {
         return toDTO(saved);
     }
 
+    /**
+     * Phase 9 — Mark Completed. Single transition IN_PROGRESS → REPORT_GENERATED
+     * gated on report data presence: either the narrative findings text is set
+     * OR at least one per-analyte result row exists for the order. Mirrors the
+     * "no half-finished reports" intent of the old sign-off ceremony without the
+     * extra clicks.
+     *
+     * Auto-bills on success, same seam as generateReport.
+     */
+    @Transactional
+    public LabOrderDTO markCompleted(Long id) {
+        LabOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getStatus() != LabStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                    "Order is not in IN_PROGRESS state — current: " + order.getStatus());
+        }
+        boolean hasFindings = order.getFindings() != null && !order.getFindings().isBlank();
+        boolean hasAnalytes = labTestResultRepository.countByLabOrderId(id) > 0;
+        if (!hasFindings && !hasAnalytes) {
+            throw new RuntimeException(
+                    "No report data — click Write Report to enter findings or analyte values first.");
+        }
+        LabStatus previous = order.getStatus();
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(LabStatus.REPORT_GENERATED);
+        order.setReportedAt(now);
+        order.setReportedByUserId(actor.userId);
+        order.setReportedByName(actor.name);
+        if (order.getReportId() == null) {
+            order.setReportId(generateReportId());
+        }
+        LabOrder saved = orderRepository.save(order);
+
+        try {
+            labBillingService.billLabOrder(saved);
+        } catch (Exception e) {
+            LoggerFactory.getLogger(LabService.class)
+                    .warn("Auto-bill failed for lab order {}: {}", saved.getId(), e.getMessage());
+        }
+
+        auditService.record("LabOrder", saved.getId().toString(), "REPORT_GENERATED",
+                saved.getHospital().getId(),
+                java.util.Map.of("status", previous.name()),
+                java.util.Map.of("status", LabStatus.REPORT_GENERATED.name(),
+                        "reportId", saved.getReportId()));
+        return toDTO(saved);
+    }
+
+    /**
+     * Phase 9 — soft cancel. Allowed from PENDING_COLLECTION / AWAITING_REPORT /
+     * IN_PROGRESS. Terminal — order is excluded from active queues but kept on-row
+     * with the cancellation actor + timestamp + optional reason for HIPAA history.
+     */
+    @Transactional
+    public LabOrderDTO cancelOrder(Long id, String reason) {
+        LabOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        LabStatus cur = order.getStatus();
+        if (cur != LabStatus.PENDING_COLLECTION
+                && cur != LabStatus.AWAITING_REPORT
+                && cur != LabStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                    "Cannot cancel — order is already " + cur + " (terminal state).");
+        }
+        Actor actor = resolveActor();
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(LabStatus.CANCELLED);
+        order.setCancelledAt(now);
+        order.setCancelledByUserId(actor.userId);
+        order.setCancelledByName(actor.name);
+        if (reason != null && !reason.isBlank()) {
+            order.setCancellationReason(reason.trim());
+        }
+        LabOrder saved = orderRepository.save(order);
+
+        auditService.record("LabOrder", saved.getId().toString(), "CANCEL",
+                saved.getHospital().getId(),
+                java.util.Map.of("status", cur.name()),
+                java.util.Map.of("status", LabStatus.CANCELLED.name(),
+                        "reason", reason != null ? reason : ""));
+        return toDTO(saved);
+    }
+
     @Transactional
     public LabOrderDTO generateReport(Long id, LabReportRequest req) {
         LabOrder order = orderRepository.findById(id)
@@ -444,6 +532,10 @@ public class LabService {
                 .reportedAt(o.getReportedAt())
                 .reportedByUserId(o.getReportedByUserId())
                 .reportedByName(o.getReportedByName())
+                .cancelledAt(o.getCancelledAt())
+                .cancelledByUserId(o.getCancelledByUserId())
+                .cancelledByName(o.getCancelledByName())
+                .cancellationReason(o.getCancellationReason())
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
