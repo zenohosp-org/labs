@@ -72,6 +72,27 @@ public class RadiologyOrder {
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;
 
+    /**
+     * Phase 8.1 — gst_rate added to radiology_orders for parity with lab_orders
+     * (V14). Lets catalog-snapshotted GST flow into the radiology auto-bill path
+     * once Phase 8.3 ships price-authority flip.
+     */
+    @Column(name = "gst_rate", precision = 5, scale = 2)
+    private BigDecimal gstRate;
+
+    /**
+     * Phase 8.1 FK to the lab_services catalogue (V14). Nullable for back-compat.
+     */
+    @Column(name = "lab_service_id")
+    private Long labServiceId;
+
+    /**
+     * Phase 8.1 admin-triage classification (V14 CHECK).
+     *   matched | ambiguous | invalid | legacy-misroute | NULL
+     */
+    @Column(name = "service_name_mapping_status", length = 20)
+    private String serviceNameMappingStatus;
+
     // ── HIPAA-grade actor/timestamp triples (V13). Same shape as LabOrder.
 
     @Column(name = "scanned_at")

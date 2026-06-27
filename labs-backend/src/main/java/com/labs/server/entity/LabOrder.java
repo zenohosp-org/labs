@@ -88,6 +88,21 @@ public class LabOrder {
     @Column(name = "gst_rate", precision = 5, scale = 2)
     private BigDecimal gstRate;
 
+    /**
+     * Phase 8.1 FK to the lab_services catalogue (V14). Nullable for back-compat:
+     * legacy free-text orders + new orders that still arrive without a
+     * labServiceId from HMS during the cutover keep working.
+     */
+    @Column(name = "lab_service_id")
+    private Long labServiceId;
+
+    /**
+     * Phase 8.1 admin-triage classification (V14 CHECK).
+     *   matched | ambiguous | invalid | legacy-misroute | NULL
+     */
+    @Column(name = "service_name_mapping_status", length = 20)
+    private String serviceNameMappingStatus;
+
     // ── HIPAA-grade actor/timestamp triples for every status transition (V13).
     //    Every flip of `status` is mirrored by (xxx_at, xxx_by_user_id, xxx_by_name)
     //    so the operator UI can render "Collected 14:32 by Jane" from one row

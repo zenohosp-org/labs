@@ -13,6 +13,7 @@ import com.labs.server.entity.Patient;
 import com.labs.server.repository.AdmissionRepository;
 import com.labs.server.repository.HospitalRepository;
 import com.labs.server.repository.LabOrderRepository;
+import com.labs.server.repository.LabServiceRepository;
 import com.labs.server.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,8 @@ public class LabService {
     private final HospitalRepository hospitalRepository;
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
+    // Phase 8.1 — catalog resolution at order-create time.
+    private final LabServiceRepository labServiceRepository;
 
     // @Lazy avoids the constructor-time cycle: LabBillingService injects
     // LabOrderRepository and now LabService also depends on it.
@@ -128,12 +131,49 @@ public class LabService {
             }
         }
 
+        // Phase 8.1 — when caller sends a catalogue id, resolve + snapshot.
+        // Back-compat: labServiceId == null → free-text path unchanged.
+        com.labs.server.entity.LabService catalogRow = null;
+        String mappingStatus = null;
+        if (req.getLabServiceId() != null) {
+            catalogRow = labServiceRepository.findById(req.getLabServiceId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Lab service not found: " + req.getLabServiceId()));
+            // Cross-tenant guard — catalogue row must belong to caller's hospital.
+            if (!req.getHospitalId().equals(catalogRow.getHospitalId())) {
+                throw new RuntimeException(
+                        "Lab service " + req.getLabServiceId()
+                                + " does not belong to hospital " + req.getHospitalId());
+            }
+            // Cross-discipline guard — lab pipeline only accepts non-radiology.
+            String d = catalogRow.getDiscipline();
+            if (d == null
+                    || "RADIOLOGY".equals(d)
+                    || (!"PATHOLOGY".equals(d)
+                            && !"CYTOLOGY".equals(d)
+                            && !"HISTOPATHOLOGY".equals(d))) {
+                throw new RuntimeException(
+                        "Lab service " + req.getLabServiceId() + " discipline=" + d
+                                + " is not valid for the lab pipeline (use /api/radiology)");
+            }
+            mappingStatus = "matched";
+        }
+
+        // Snapshot precedence: request value wins when present (HMS may still
+        // pass its own price during the pricing-authority back-compat window);
+        // catalog value fills in when request omits.
+        String serviceName        = req.getServiceName()        != null ? req.getServiceName()        : (catalogRow == null ? null : catalogRow.getName());
+        String specializationName = req.getSpecializationName() != null ? req.getSpecializationName() : (catalogRow == null ? null : catalogRow.getDiscipline());
+        String sampleType         = req.getSampleType()         != null ? req.getSampleType()         : (catalogRow == null ? null : catalogRow.getSpecimenKind());
+        java.math.BigDecimal price    = req.getPrice()   != null ? req.getPrice()   : (catalogRow == null ? null : catalogRow.getPrice());
+        java.math.BigDecimal gstRate  = req.getGstRate() != null ? req.getGstRate() : (catalogRow == null ? null : catalogRow.getGstRate());
+
         LabOrder order = LabOrder.builder()
                 .hospital(hospital)
                 .patient(patient)
                 .admission(admission)
-                .serviceName(req.getServiceName())
-                .specializationName(req.getSpecializationName())
+                .serviceName(serviceName)
+                .specializationName(specializationName)
                 .referredByName(createdByName)
                 .technicianId(req.getTechnicianId())
                 .technicianName(req.getTechnicianName())
@@ -142,9 +182,11 @@ public class LabService {
                         : LabPriority.ROUTINE)
                 .status(LabStatus.PENDING_COLLECTION)
                 .scheduledDate(req.getScheduledDate())
-                .sampleType(req.getSampleType())
-                .price(req.getPrice())
-                .gstRate(req.getGstRate())
+                .sampleType(sampleType)
+                .price(price)
+                .gstRate(gstRate)
+                .labServiceId(req.getLabServiceId())
+                .serviceNameMappingStatus(mappingStatus)
                 .createdByName(createdByName)
                 .build();
 

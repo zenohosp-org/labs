@@ -24,4 +24,12 @@ public class CreateLabOrderRequest {
     private BigDecimal price;
     /** GST % from the HospitalServices catalog. e.g. 18 for 18%. */
     private BigDecimal gstRate;
+
+    /**
+     * Phase 8.1 — when present, server resolves the catalogue row, asserts the
+     * tenancy + discipline match, and snapshots name/sampleType/price/gstRate
+     * from the catalog when the request omits or differs (back-compat: null
+     * → existing free-text path runs unchanged).
+     */
+    private Long labServiceId;
 }

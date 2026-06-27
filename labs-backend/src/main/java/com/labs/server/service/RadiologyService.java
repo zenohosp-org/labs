@@ -12,6 +12,7 @@ import com.labs.server.entity.RadiologyPriority;
 import com.labs.server.entity.RadiologyStatus;
 import com.labs.server.repository.AdmissionRepository;
 import com.labs.server.repository.HospitalRepository;
+import com.labs.server.repository.LabServiceRepository;
 import com.labs.server.repository.PatientRepository;
 import com.labs.server.repository.RadiologyOrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,8 @@ public class RadiologyService {
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
     private final com.labs.server.repository.InvoiceRepository invoiceRepository;
+    // Phase 8.1 — catalog resolution at order-create time.
+    private final LabServiceRepository labServiceRepository;
 
     @Lazy
     private final RadiologyBillingService billingService;
@@ -118,12 +121,40 @@ public class RadiologyService {
             }
         }
 
+        // Phase 8.1 — catalog resolution + snapshot when labServiceId is sent.
+        com.labs.server.entity.LabService catalogRow = null;
+        String mappingStatus = null;
+        if (req.getLabServiceId() != null) {
+            catalogRow = labServiceRepository.findById(req.getLabServiceId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Lab service not found: " + req.getLabServiceId()));
+            if (!req.getHospitalId().equals(catalogRow.getHospitalId())) {
+                throw new RuntimeException(
+                        "Lab service " + req.getLabServiceId()
+                                + " does not belong to hospital " + req.getHospitalId());
+            }
+            // Radiology pipeline accepts only RADIOLOGY discipline.
+            if (!"RADIOLOGY".equals(catalogRow.getDiscipline())) {
+                throw new RuntimeException(
+                        "Lab service " + req.getLabServiceId() + " discipline="
+                                + catalogRow.getDiscipline()
+                                + " is not valid for the radiology pipeline (use /api/lab)");
+            }
+            mappingStatus = "matched";
+        }
+
+        // Snapshot precedence: request value wins; catalog fills when omitted.
+        String serviceName        = req.getServiceName()        != null ? req.getServiceName()        : (catalogRow == null ? null : catalogRow.getName());
+        String specializationName = req.getSpecializationName() != null ? req.getSpecializationName() : (catalogRow == null ? null : catalogRow.getDiscipline());
+        java.math.BigDecimal price   = req.getPrice()   != null ? req.getPrice()   : (catalogRow == null ? null : catalogRow.getPrice());
+        java.math.BigDecimal gstRate = req.getGstRate() != null ? req.getGstRate() : (catalogRow == null ? null : catalogRow.getGstRate());
+
         RadiologyOrder order = RadiologyOrder.builder()
                 .hospital(hospital)
                 .patient(patient)
                 .admission(admission)
-                .serviceName(req.getServiceName())
-                .specializationName(req.getSpecializationName())
+                .serviceName(serviceName)
+                .specializationName(specializationName)
                 .referredByName(createdByName)
                 .technicianId(req.getTechnicianId())
                 .technicianName(req.getTechnicianName())
@@ -132,11 +163,18 @@ public class RadiologyService {
                         : RadiologyPriority.ROUTINE)
                 .status(RadiologyStatus.PENDING_SCAN)
                 .scheduledDate(req.getScheduledDate())
-                .price(req.getPrice())
+                .price(price)
+                .gstRate(gstRate)
+                .labServiceId(req.getLabServiceId())
+                .serviceNameMappingStatus(mappingStatus)
                 .createdByName(createdByName)
                 .build();
 
-        return toDTO(orderRepository.save(order));
+        RadiologyOrder saved = orderRepository.save(order);
+        // Phase 8.1 parity gap fix — audit was missing on radiology createOrder.
+        auditService.record("RadiologyOrder", saved.getId().toString(), "CREATE",
+                hospital.getId(), null, saved);
+        return toDTO(saved);
     }
 
     @Transactional
