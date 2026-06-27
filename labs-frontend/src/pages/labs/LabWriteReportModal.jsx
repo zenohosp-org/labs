@@ -132,7 +132,7 @@ function LabWriteReportModal({ order, onClose, onSaved }) {
 
     return (
         <div className="hms-rad-modal-overlay">
-            <div className="hms-rad-modal" style={{ maxWidth: 1100 }}>
+            <div className="hms-rad-modal is-2xl">
                 <div className="hms-rad-modal__hdr">
                     <div className="hms-rad-modal__hdr-left">
                         <div>

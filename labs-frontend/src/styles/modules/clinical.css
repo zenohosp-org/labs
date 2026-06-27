@@ -7890,6 +7890,75 @@
     font-family: var(--hms-font-family);
 }
 
+/* Size modifiers — applied alongside .hms-rad-modal */
+.hms-rad-modal.is-lg  { max-width: 760px; }
+.hms-rad-modal.is-xl  { max-width: 1000px; }
+.hms-rad-modal.is-2xl { max-width: 1280px; }
+
+/* Per-analyte result entry — the value input, live flag pill, and reference
+   band on the Write Report → Per-analyte tab. Input tints by flag tone so
+   abnormal entries jump out the moment the tech tabs out; the flag pill is
+   tabular-bold so it reads identically on screen and in the printed PDF. */
+.hms-analyte-input {
+    width: 100%;
+    padding: 6px 9px;
+    border: 1px solid var(--hms-gray-200);
+    border-radius: 6px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    background: var(--hms-white);
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    font-family: var(--hms-font-family);
+}
+.hms-analyte-input:focus {
+    outline: none;
+    border-color: var(--hms-gray-400);
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+.hms-analyte-input.is-success { border-color: #a7f3d0; background: #ecfdf5; }
+.hms-analyte-input.is-warning { border-color: #fde68a; background: #fefce8; }
+.hms-analyte-input.is-danger  { border-color: #fecaca; background: #fef2f2; }
+
+.hms-analyte-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 800;            /* BOLD — visible at a glance + on print */
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hms-analyte-flag.is-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.hms-analyte-flag.is-warning { background: #fefce8; color: #92400e; border-color: #fde68a; }
+.hms-analyte-flag.is-danger  { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+/* Reference band cell — make the normal range typographically loud
+   (tabular nums, slightly bigger, dark slate) so it's the first thing
+   the tech reads while typing the value. Panic bounds, if any, appear
+   below in a quieter sub-line. */
+.hms-analyte-ref {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.hms-analyte-ref__band {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hms-gray-800);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hms-analyte-ref__panic {
+    font-size: 10px;
+    color: var(--hms-gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
 .hms-rad-modal__hdr {
     display: flex;
     align-items: center;

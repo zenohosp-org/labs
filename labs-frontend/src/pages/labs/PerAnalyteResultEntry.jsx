@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { resultApi, labServiceApi } from "@/api/labsClient";
+import { resultApi, labServiceApi, referenceRangeApi } from "@/api/labsClient";
 import { Alert, Badge, Button } from "@/components/ui";
 import AmendResultModal from "@/components/modals/AmendResultModal";
 
@@ -81,6 +81,63 @@ function findPanel(catalog, order) {
 }
 
 /**
+ * Build a Map<labServiceId, range> picking the best matching reference range
+ * for each analyte. Today we don't carry patient sex / age on the order DTO,
+ * so we default to the "adult-broad" band:
+ *   1. prefer sex=ANY rows
+ *   2. otherwise prefer the row that covers the typical adult window
+ *      (minAge ≤ 18 and maxAge ≥ 50)
+ *   3. fall back to the widest age window
+ *
+ * Deterministic tiebreaker: lower minAgeYears wins. When a future migration
+ * adds patient demographics to LabOrderDTO this becomes a real lookup; for
+ * now this gives the most useful default for the typical adult lab order.
+ */
+function indexRangesByService(ranges) {
+    const groups = new Map();
+    for (const r of ranges || []) {
+        if (!r.isActive || r.labServiceId == null) continue;
+        if (!groups.has(r.labServiceId)) groups.set(r.labServiceId, []);
+        groups.get(r.labServiceId).push(r);
+    }
+    const score = (r) => {
+        const isAny = r.sex === "ANY" || r.sex == null;
+        const coversAdult =
+            (r.minAgeYears == null || r.minAgeYears <= 18)
+            && (r.maxAgeYears == null || r.maxAgeYears >= 50);
+        const ageWidth = (r.maxAgeYears ?? 200) - (r.minAgeYears ?? 0);
+        return (isAny ? 1000 : 0) + (coversAdult ? 100 : 0) + Math.min(ageWidth, 200);
+    };
+    const out = new Map();
+    for (const [svcId, list] of groups) {
+        list.sort((a, b) => score(b) - score(a) || (a.minAgeYears ?? 0) - (b.minAgeYears ?? 0));
+        out.set(svcId, list[0]);
+    }
+    return out;
+}
+
+/**
+ * Compute the abnormal flag for a numeric value against a reference range.
+ *   LL = panic-low (below criticalLow)
+ *   L  = below normal range
+ *   N  = within normal range
+ *   H  = above normal range
+ *   HH = panic-high (above criticalHigh)
+ * Returns null when value is blank / non-numeric / range missing.
+ */
+function computeFlag(rawValue, range) {
+    if (!range) return null;
+    if (rawValue === "" || rawValue == null) return null;
+    const v = Number(rawValue);
+    if (Number.isNaN(v)) return null;
+    if (range.criticalLow != null && v < range.criticalLow) return "LL";
+    if (range.criticalHigh != null && v > range.criticalHigh) return "HH";
+    if (range.minValue != null && v < range.minValue) return "L";
+    if (range.maxValue != null && v > range.maxValue) return "H";
+    return "N";
+}
+
+/**
  * Phase 8.1 — does this order belong on the per-analyte panel UX at all?
  * Returns false for RADIOLOGY discipline or any non-NUMERIC value type — those
  * use the narrative-findings textarea instead.
@@ -115,6 +172,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     const [rows, setRows] = useState([]);
     const [catalog, setCatalog] = useState([]);
     const [panelChildren, setPanelChildren] = useState([]);
+    const [rangesByService, setRangesByService] = useState(() => new Map());
     const [draftValues, setDraftValues] = useState({}); // testCode -> string
     const [adHoc, setAdHoc] = useState([]); // [{tempId, testCode, analyteName, value}]
     const [saving, setSaving] = useState(false);
@@ -143,8 +201,15 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
         if (!user?.hospitalId) return;
         (async () => {
             try {
-                const c = await labServiceApi.list(user.hospitalId, true);
+                // Catalog + ranges fetched in parallel — both are per-hospital and
+                // small (~50 rows each), and the per-analyte UI needs both before
+                // it can render the right column.
+                const [c, ranges] = await Promise.all([
+                    labServiceApi.list(user.hospitalId, true),
+                    referenceRangeApi.list(user.hospitalId).catch(() => []),
+                ]);
                 setCatalog(c ?? []);
+                setRangesByService(indexRangesByService(ranges));
                 const panel = findPanel(c ?? [], order);
                 if (panel) {
                     try {
@@ -332,7 +397,17 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                         ))}
 
                         {/* Panel children not yet entered */}
-                        {missingFromPanel.map((p) => (
+                        {missingFromPanel.map((p) => {
+                            const range = rangesByService.get(p.id);
+                            const typed = draftValues[p.testCode] ?? "";
+                            const liveFlag = computeFlag(typed, range);
+                            const flagMeta = liveFlag ? FLAG_META[liveFlag] : null;
+                            const FlagIcon = flagMeta?.icon;
+                            const refDisplay = range
+                                ? (range.rangeText
+                                    || `${range.minValue ?? "—"}–${range.maxValue ?? "—"}${range.unit ? " " + range.unit : ""}`)
+                                : null;
+                            return (
                             <tr key={p.testCode} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="py-2 pr-2">
                                     <div className="font-bold text-gray-800">{p.name}</div>
@@ -344,24 +419,47 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                                     <input
                                         type="number"
                                         step="any"
-                                        value={draftValues[p.testCode] ?? ""}
+                                        value={typed}
                                         onChange={(e) =>
                                             setDraftValues((d) => ({ ...d, [p.testCode]: e.target.value }))
                                         }
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-13"
+                                        className={`hms-analyte-input ${flagMeta ? "is-" + flagMeta.tone : ""}`}
                                         placeholder="—"
                                     />
                                 </td>
-                                <td className="py-2 pr-2 text-12 text-gray-500">{p.defaultUnit}</td>
-                                <td className="py-2 pr-2 text-gray-300">—</td>
-                                <td className="py-2 pr-2 text-gray-300">—</td>
+                                <td className="py-2 pr-2 text-12 text-gray-500">{p.defaultUnit || range?.unit || ""}</td>
+                                <td className="py-2 pr-2">
+                                    {flagMeta ? (
+                                        <span className={`hms-analyte-flag is-${flagMeta.tone}`}>
+                                            {FlagIcon && <FlagIcon className="w-3 h-3" />}
+                                            {flagMeta.label}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-300">—</span>
+                                    )}
+                                </td>
+                                <td className="py-2 pr-2">
+                                    {refDisplay ? (
+                                        <div className="hms-analyte-ref">
+                                            <span className="hms-analyte-ref__band">{refDisplay}</span>
+                                            {(range.criticalLow != null || range.criticalHigh != null) && (
+                                                <div className="hms-analyte-ref__panic">
+                                                    Panic: {range.criticalLow ?? "—"}&nbsp;/&nbsp;{range.criticalHigh ?? "—"}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-300">—</span>
+                                    )}
+                                </td>
                                 <td className="py-2 pr-2 text-gray-300">—</td>
                                 <td className="py-2 pr-2">
                                     <Badge tone="neutral" soft>NOT ENTERED</Badge>
                                 </td>
                                 <td className="py-2 pr-2 text-right text-gray-300">—</td>
                             </tr>
-                        ))}
+                            );
+                        })}
 
                         {/* Ad-hoc rows for tests not in the panel */}
                         {adHoc.map((a, idx) => (

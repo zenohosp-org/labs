@@ -795,6 +795,10 @@
     max-width: 1000px;
 }
 
+.hms-modal-2xl {
+    max-width: 1280px;
+}
+
 .hms-modal-header {
     display: flex;
     align-items: center;
