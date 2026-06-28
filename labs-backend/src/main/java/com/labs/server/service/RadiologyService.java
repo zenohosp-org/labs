@@ -454,6 +454,7 @@ public class RadiologyService {
                 .findings(o.getFindings())
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
+                .requisitionNumber(o.getRequisitionNumber())
                 .createdByName(o.getCreatedByName())
                 .createdAt(o.getCreatedAt());
 

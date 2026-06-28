@@ -50,6 +50,9 @@ public class RadiologyOrderDTO {
     private String cancelledByName;
     private String cancellationReason;
 
+    /** Phase 10 — group key shared with sibling orders from the same batch. */
+    private String requisitionNumber;
+
     private String findings;
     private String observation;
     private String reportId;

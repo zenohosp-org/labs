@@ -540,6 +540,7 @@ public class LabService {
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
                 .accessionNumber(o.getAccessionNumber())
+                .requisitionNumber(o.getRequisitionNumber())
                 .labServiceId(o.getLabServiceId())
                 .labServiceDiscipline(catalogDiscipline)
                 .labServiceValueType(catalogValueType)

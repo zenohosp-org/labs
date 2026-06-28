@@ -175,6 +175,17 @@ public class LabOrder {
     @Column(name = "accession_number", length = 40)
     private String accessionNumber;
 
+    /**
+     * Phase 10 — shared group key set when a multi-test batch is created via
+     * POST /api/investigations/batch. All lab + radiology_orders from the same
+     * doctor's submission share this value. Nullable for legacy and single-test
+     * orders (they render as standalone queue cards).
+     * Format: {HOSPITAL-PREFIX}-REQ-{YYYY}-{6-digit-sequence}.
+     * Queue grouping only — never used by billing.
+     */
+    @Column(name = "requisition_number", length = 40)
+    private String requisitionNumber;
+
     @Column(name = "created_by_name", length = 200)
     private String createdByName;
 

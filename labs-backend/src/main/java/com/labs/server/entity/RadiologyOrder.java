@@ -153,6 +153,13 @@ public class RadiologyOrder {
     @Column(name = "report_id", length = 20)
     private String reportId;
 
+    /**
+     * Phase 10 — see LabOrder.requisitionNumber. Shared across lab + radiology
+     * tables for mixed-discipline batches. Nullable for single-test orders.
+     */
+    @Column(name = "requisition_number", length = 40)
+    private String requisitionNumber;
+
     @Column(name = "created_by_name", length = 200)
     private String createdByName;
 

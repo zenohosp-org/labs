@@ -58,6 +58,10 @@ public class LabOrderDTO {
     /** Phase 1 — public lab-wide accession printed on barcodes / requisitions. */
     private String accessionNumber;
 
+    /** Phase 10 — group key shared with sibling orders from the same batch. Null
+     *  for legacy / single-test orders. Queue display only. */
+    private String requisitionNumber;
+
     /** Phase 8.1 (V14) — catalog FK + projected discipline/valueType so the FE can
      *  route the report-entry UX (per-analyte panel vs narrative findings) without
      *  re-fetching the catalogue. Null on legacy free-text orders. */

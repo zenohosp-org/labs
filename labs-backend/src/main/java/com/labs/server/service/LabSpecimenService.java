@@ -9,6 +9,8 @@ import com.labs.server.entity.LabSpecimen;
 import com.labs.server.repository.LabOrderRepository;
 import com.labs.server.repository.LabSpecimenRepository;
 import com.labs.server.util.HospitalIdPrefix;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +49,9 @@ public class LabSpecimenService {
     private static final String BARCODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
     private static final int BARCODE_LEN = 10;
     private static final int ACCESSION_SEQ_DIGITS = 6;
+
+    @PersistenceContext
+    private EntityManager em;
 
     private final LabSpecimenRepository specimenRepository;
     private final LabOrderRepository orderRepository;
@@ -234,11 +239,16 @@ public class LabSpecimenService {
     }
 
     private long nextAccessionSeq(UUID hospitalId, int year) {
-        // Crude but works pre-Phase-2: count existing accessioned orders for the year prefix.
-        // The +1 + small jitter avoids a tight race when two specimens are created in the
-        // same millisecond (the UNIQUE index would otherwise reject one).
-        long base = orderRepository.count() + 1;
-        return base + ThreadLocalRandom.current().nextInt(0, 7);
+        // V18 — sourced from the Postgres sequence accession_number_seq. The
+        // previous count-based approach (orderRepository.count()+1+jitter)
+        // raced inside a single transaction when Phase 10's batch endpoint
+        // created N lab_orders back-to-back: count() returned the same
+        // pre-batch number for every iteration, and two same-seq accessions
+        // collided on the V5 UNIQUE index. A native sequence is allocation-
+        // safe regardless of transaction state.
+        Object raw = em.createNativeQuery("SELECT nextval('accession_number_seq')")
+                .getSingleResult();
+        return ((Number) raw).longValue();
     }
 
     private String generateUniqueBarcode() {
