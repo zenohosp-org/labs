@@ -54,6 +54,14 @@ public class InvestigationSummaryDTO {
     private String status;
     private LocalDate scheduledDate;
 
+    /**
+     * Phase 10 — group key shared by every row that landed in the same
+     * POST /api/investigations/batch submission. Null on legacy single-test
+     * orders created before V17. HMS uses this to render one card per
+     * requisition in patient/admission lab lists.
+     */
+    private String requisitionNumber;
+
     /** LAB only — sample tube category. */
     private String sampleType;
 

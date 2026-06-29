@@ -113,7 +113,8 @@ public class InvestigationService {
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
                 .createdByName(o.getCreatedByName())
-                .createdAt(o.getCreatedAt());
+                .createdAt(o.getCreatedAt())
+                .requisitionNumber(o.getRequisitionNumber());
         applyInvoice(b, inv);
         return b.build();
     }
@@ -144,7 +145,8 @@ public class InvestigationService {
                 .observation(o.getObservation())
                 .reportId(o.getReportId())
                 .createdByName(o.getCreatedByName())
-                .createdAt(o.getCreatedAt());
+                .createdAt(o.getCreatedAt())
+                .requisitionNumber(o.getRequisitionNumber());
         applyInvoice(b, inv);
         return b.build();
     }
