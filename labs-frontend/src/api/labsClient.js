@@ -588,6 +588,18 @@ export const collectionApi = {
         const { data } = await api.get("/api/collection/stats");
         return data;
     },
+    /**
+     * Date-windowed log of every specimen collected. Drives the Collections
+     * page (post-collection audit log). `from` / `to` are ISO yyyy-MM-dd
+     * strings — backend defaults both to today if omitted.
+     */
+    log: async ({ from, to } = {}) => {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const { data } = await api.get("/api/collection/log", { params });
+        return data;
+    },
 };
 
 // ── Audit trail (Phase 0 — read-only viewer) ───────────────────────────

@@ -7332,6 +7332,23 @@
 .hms-lab-status-badge.is-reported    { background: var(--hms-success-bg); color: #065f46; border-color: #a7f3d0; }
 .hms-lab-status-badge.is-billed      { background: var(--hms-gray-100);   color: var(--hms-gray-700); border-color: var(--hms-gray-200); }
 
+/* Lifecycle timestamps — one row of small muted chips under the investigation
+   name on Lab Queue. Each chip = a status milestone with its absolute time. */
+.hms-lab-row__lifecycle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--hms-gray-500);
+}
+.hms-lab-row__lifecycle-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.3;
+}
+
 /* IPD badge — shown next to patient name when the order is linked to an
    admission. Tells the lab tech "this is an inpatient", and the admission
    number under the UHID gives them the matching record for retrieval. */

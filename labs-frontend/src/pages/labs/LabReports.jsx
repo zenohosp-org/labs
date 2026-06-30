@@ -128,6 +128,12 @@ function LabReports() {
                                     <div>
                                         <p className="hms-rad-row__svc-name">{order.serviceName}</p>
                                         {order.sampleType && <p className="hms-rad-row__svc-bill">Sample: {order.sampleType}</p>}
+                                        {order.collectedAt && (
+                                            <p className="hms-rad-row__svc-bill">Collected: {fmtDateTime(order.collectedAt)}</p>
+                                        )}
+                                        {order.startedAt && (
+                                            <p className="hms-rad-row__svc-bill">Started: {fmtDateTime(order.startedAt)}</p>
+                                        )}
                                     </div>
                                     <div className="hms-rad-tech">
                                         <p>{order.referredByName ?? "—"}</p>

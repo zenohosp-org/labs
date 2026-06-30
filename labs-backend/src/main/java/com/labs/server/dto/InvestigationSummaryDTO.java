@@ -48,11 +48,18 @@ public class InvestigationSummaryDTO {
     private String priority;
     /**
      * Source-table status — clients should map per {@code kind}:
-     *   LAB       → PENDING_COLLECTION | AWAITING_REPORT | REPORT_GENERATED | BILLED
-     *   RADIOLOGY → PENDING_SCAN       | AWAITING_REPORT | REPORT_GENERATED | BILLED
+     *   LAB       → PENDING_COLLECTION | AWAITING_REPORT | IN_PROGRESS | REPORT_GENERATED | BILLED | CANCELLED
+     *   RADIOLOGY → PENDING_SCAN       | AWAITING_REPORT | IN_PROGRESS | REPORT_GENERATED | BILLED | CANCELLED
      */
     private String status;
     private LocalDate scheduledDate;
+
+    /**
+     * Lab-only audit-trail identifier (Phase 1c).
+     * Format: {HOSPITAL_NUMERIC_CODE}ACC-{YYYY}-{6-digit seq} — printed on
+     * specimen labels + on the patient-facing report.
+     */
+    private String accessionNumber;
 
     /**
      * Phase 10 — group key shared by every row that landed in the same
@@ -71,7 +78,18 @@ public class InvestigationSummaryDTO {
     /** LAB only — when the sample was drawn / collected. */
     private LocalDateTime collectedAt;
 
+    /** When the sample/imaging unit received custody (no status change — observational). */
+    private LocalDateTime receivedAt;
+
+    /** When the analyser run / read-out started — fires status → IN_PROGRESS. */
+    private LocalDateTime startedAt;
+
     private LocalDateTime reportedAt;
+
+    /** Set on soft cancel; pair with {@code cancellationReason} when present. */
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
+
     private String findings;
     private String observation;
     private String reportId;

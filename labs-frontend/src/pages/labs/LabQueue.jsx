@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { labApi } from "@/api/labsClient";
+import { labApi, specimenApi } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
-import { fmtDate } from "@/utils/date";
+import { fmtDate, fmtDateTime } from "@/utils/date";
+import { printBarcodes } from "@/utils/printBarcodes";
 import {
     TestTube,
     Clock,
@@ -19,7 +20,7 @@ import LabWriteReportModal from "./LabWriteReportModal";
 import CollectPaymentModal from "../radiology/CollectPaymentModal";
 import PaymentCell from "@/components/PaymentCell";
 import { Menu } from "@/components/ui";
-import { MoreHorizontal, CheckCircle2 as CheckCircle2Icon, PlayCircle, Edit3, XCircle } from "lucide-react";
+import { MoreHorizontal, CheckCircle2 as CheckCircle2Icon, PlayCircle, Edit3, Printer, XCircle } from "lucide-react";
 
 // HMS-parity status badge — single pill shown in the STATUS column per row.
 const STATUS_META = {
@@ -121,6 +122,33 @@ function LabQueue() {
             load();
         } catch (err) {
             notify(err?.response?.data?.message || "Failed to mark completed", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
+    // Phase 11 — fetch the order's specimens and open the print-label window.
+    // Available once status >= AWAITING_REPORT (specimens exist after collect).
+    // Falls through gracefully if no specimens are linked (legacy orders).
+    const handlePrint = async (order) => {
+        setActingOn(order.id);
+        try {
+            const specimens = await specimenApi.listForOrder(order.id);
+            if (!specimens || specimens.length === 0) {
+                notify("No specimens to print for this order", "warning");
+                return;
+            }
+            printBarcodes({
+                patient: { name: order.patientName, uhid: order.patientUhid },
+                specimens: specimens.map((s) => ({
+                    barcode: s.barcode,
+                    containerType: s.containerType,
+                    volumeMl: s.volumeMl,
+                    accessionNumber: order.accessionNumber,
+                })),
+            });
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to print barcode", "error");
         } finally {
             setActingOn(null);
         }
@@ -280,6 +308,7 @@ function LabQueue() {
                     loadingId={markingCollected}
                     onCollect={(o) => setCollectPayment(o)}
                     onCancel={handleCancel}
+                    onPrint={handlePrint}
                 />
             ) : activeSection === "awaiting" ? (
                 <QueueSection
@@ -295,6 +324,7 @@ function LabQueue() {
                     loadingId={actingOn}
                     onCollect={(o) => setCollectPayment(o)}
                     onCancel={handleCancel}
+                    onPrint={handlePrint}
                 />
             ) : (
                 <QueueSection
@@ -311,6 +341,7 @@ function LabQueue() {
                     onMarkCompleted={handleMarkCompleted}
                     onCollect={(o) => setCollectPayment(o)}
                     onCancel={handleCancel}
+                    onPrint={handlePrint}
                 />
             )}
 
@@ -352,6 +383,7 @@ function QueueSection({
     onCollect,
     onMarkCompleted,    // Phase 9 — In Progress section only
     onCancel,           // Phase 9 — all active sections
+    onPrint,            // Phase 11 — available once specimen exists (status ≥ AWAITING_REPORT)
 }) {
     return (
         <div className={`hms-rad-section ${colorMod}`}>
@@ -407,6 +439,7 @@ function QueueSection({
                                             <p>{order.referredByName}</p>
                                         </div>
                                     )}
+                                    <LifecycleTimestamps order={order} />
                                 </div>
                                 <div>
                                     {order.sampleType ? (
@@ -449,6 +482,7 @@ function QueueSection({
                                             loadingId,
                                             onMarkCompleted,
                                             onCancel,
+                                            onPrint,
                                         })}
                                     />
                                 </div>
@@ -472,7 +506,7 @@ function QueueSection({
  * retired in Phase 9 — kept the backend audit hooks, dropped the bench-tech
  * UI surface that nobody used.
  */
-function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompleted, onCancel }) {
+function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompleted, onCancel, onPrint }) {
     const items = [];
 
     // Primary action (Mark Collected / Start Test / Write Report).
@@ -501,8 +535,21 @@ function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompl
         });
     }
 
+    // Phase 11 — Print Barcode (available after collect — specimen rows exist
+    // for any order at AWAITING_REPORT / IN_PROGRESS / REPORT_GENERATED / BILLED).
+    if (onPrint && order.status !== "PENDING_COLLECTION" && order.status !== "CANCELLED") {
+        items.push({
+            key: "print",
+            label: "Print Barcode",
+            icon: <Printer className="w-4 h-4" />,
+            disabled: loadingId === order.id,
+            onClick: () => onPrint(order),
+        });
+    }
+
     // Phase 9 — Cancel (all active sections). Destructive tone.
-    if (onCancel) {
+    if (onCancel && order.status !== "CANCELLED" && order.status !== "BILLED"
+            && order.status !== "REPORT_GENERATED") {
         if (items.length > 0) items.push({ divider: true });
         items.push({
             key: "cancel",
@@ -515,6 +562,38 @@ function buildActionItems({ order, actionLabel, onAction, loadingId, onMarkCompl
     }
 
     return items;
+}
+
+/**
+ * Inline lifecycle timestamps under the investigation name. Renders only the
+ * timestamps relevant to the order's current state — keeps the row scannable
+ * (e.g. AWAITING_REPORT shows just "Collected 12 min ago"; REPORT_GENERATED
+ * adds started + reported).
+ */
+function LifecycleTimestamps({ order }) {
+    const lines = [];
+    if (order.collectedAt && order.status !== "PENDING_COLLECTION") {
+        lines.push({ key: "c", label: "Collected", at: order.collectedAt });
+    }
+    if (order.startedAt && order.status !== "PENDING_COLLECTION" && order.status !== "AWAITING_REPORT") {
+        lines.push({ key: "s", label: "Started", at: order.startedAt });
+    }
+    if (order.reportedAt) {
+        lines.push({ key: "r", label: "Reported", at: order.reportedAt });
+    }
+    if (order.cancelledAt) {
+        lines.push({ key: "x", label: "Cancelled", at: order.cancelledAt });
+    }
+    if (lines.length === 0) return null;
+    return (
+        <div className="hms-lab-row__lifecycle">
+            {lines.map((l) => (
+                <span key={l.key} className="hms-lab-row__lifecycle-item">
+                    <Clock className="w-3 h-3" /> {l.label}: {fmtDateTime(l.at)}
+                </span>
+            ))}
+        </div>
+    );
 }
 
 export { LabQueue as default };

@@ -3,6 +3,7 @@ package com.labs.server.service;
 import com.labs.server.context.AuthContext;
 import com.labs.server.dto.BulkCollectRequest;
 import com.labs.server.dto.BulkCollectResultDTO;
+import com.labs.server.dto.CollectedSpecimenRowDTO;
 import com.labs.server.dto.CollectionStatsDTO;
 import com.labs.server.dto.ContainerPlanItemDTO;
 import com.labs.server.dto.LabSpecimenDTO;
@@ -16,6 +17,7 @@ import com.labs.server.entity.Patient;
 import com.labs.server.repository.LabOrderRepository;
 import com.labs.server.repository.LabSpecimenRepository;
 import com.labs.server.repository.LabServiceRepository;
+import com.labs.server.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -83,6 +85,7 @@ public class CollectionService {
     private final LabOrderRepository orderRepository;
     private final LabSpecimenRepository specimenRepository;
     private final LabServiceRepository catalogRepository;
+    private final PatientRepository patientRepository;
     private final LabSpecimenService specimenService;
     private final AuditService auditService;
     private final ObjectProvider<AuthContext> authContextProvider;
@@ -248,6 +251,85 @@ public class CollectionService {
                 .createdSpecimens(createdSpecimens)
                 .tubeCount(req.getTubes().size())
                 .orderCount(collectedOrderIds.size())
+                .build();
+    }
+
+    // ── Collected specimens log ────────────────────────────────────────
+
+    /**
+     * Date-windowed list of every specimen collected for the hospital. Joins
+     * specimen → order → patient in three batched lookups (no N+1) so a
+     * 500-row day still renders in one round-trip. Sort: newest collected_at
+     * first.
+     *
+     * Used by the Collections page as a read-only audit log of what the lab
+     * has actually received. Distinct from {@link #buildQueue} which lists
+     * orders that have NOT been collected yet.
+     */
+    public List<CollectedSpecimenRowDTO> log(UUID hospitalId, LocalDateTime from, LocalDateTime to) {
+        if (hospitalId == null) return List.of();
+
+        List<LabSpecimen> specimens = specimenRepository.findCollectedInRange(hospitalId, from, to);
+        if (specimens.isEmpty()) return List.of();
+
+        // Batch-load the parent orders to avoid N+1 lookups when the bench is busy.
+        java.util.Set<Long> orderIds = specimens.stream()
+                .map(LabSpecimen::getLabOrderId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, LabOrder> ordersById = orderRepository.findAllById(orderIds).stream()
+                .collect(Collectors.toMap(LabOrder::getId, o -> o));
+
+        // Batch-load patients via the order list — every order carries a patient FK.
+        java.util.Set<Integer> patientIds = ordersById.values().stream()
+                .map(o -> o.getPatient() != null ? o.getPatient().getId() : null)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Integer, Patient> patientsById = patientRepository.findAllById(patientIds).stream()
+                .collect(Collectors.toMap(Patient::getId, p -> p));
+
+        List<CollectedSpecimenRowDTO> rows = new ArrayList<>(specimens.size());
+        for (LabSpecimen s : specimens) {
+            LabOrder order = ordersById.get(s.getLabOrderId());
+            Patient patient = (order != null && order.getPatient() != null)
+                    ? patientsById.get(order.getPatient().getId())
+                    : null;
+            rows.add(toRow(s, order, patient));
+        }
+        return rows;
+    }
+
+    private CollectedSpecimenRowDTO toRow(LabSpecimen s, LabOrder order, Patient patient) {
+        String patientName = patient == null ? null
+                : patient.getFirstName()
+                + (patient.getLastName() != null ? " " + patient.getLastName() : "");
+        return CollectedSpecimenRowDTO.builder()
+                .specimenId(s.getId())
+                .barcode(s.getBarcode())
+                .qrPayload(s.getQrPayload())
+                .labOrderId(s.getLabOrderId())
+                .serviceName(order != null ? order.getServiceName() : null)
+                .accessionNumber(order != null ? order.getAccessionNumber() : null)
+                .orderStatus(order != null && order.getStatus() != null
+                        ? order.getStatus().name() : null)
+                .priority(order != null && order.getPriority() != null
+                        ? order.getPriority().name() : null)
+                .containerType(s.getContainerType())
+                .additive(s.getAdditive())
+                .volumeMl(s.getVolumeMl())
+                .patientId(patient != null ? patient.getId() : null)
+                .patientName(patientName)
+                .patientUhid(patient != null ? patient.getUhid() : null)
+                .collectedAt(s.getCollectedAt())
+                .collectedByUserId(s.getCollectedByUserId())
+                .collectedByName(s.getCollectedByName())
+                .receivedAt(s.getReceivedAt())
+                .accessionedAt(s.getAccessionedAt())
+                .rejected(s.getRejected())
+                .rejectedAt(s.getRejectedAt())
+                .rejectionReasonCode(s.getRejectionReasonCode())
+                .rejectionNotes(s.getRejectionNotes())
+                .createdAt(s.getCreatedAt())
                 .build();
     }
 

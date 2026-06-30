@@ -44,4 +44,19 @@ public interface LabSpecimenRepository extends JpaRepository<LabSpecimen, Long> 
     long countCollectedNotReceived(@Param("hospitalId") UUID hospitalId,
                                     @Param("from") LocalDateTime from,
                                     @Param("to") LocalDateTime to);
+
+    /**
+     * List view for the Collections page — every specimen collected within
+     * the window for a hospital, newest first. Includes rejected rows so the
+     * UI can render them with a red pill (caller filters if needed).
+     */
+    @Query("""
+        SELECT s FROM LabSpecimen s
+        WHERE s.hospitalId = :hospitalId
+          AND s.collectedAt BETWEEN :from AND :to
+        ORDER BY s.collectedAt DESC
+    """)
+    List<LabSpecimen> findCollectedInRange(@Param("hospitalId") UUID hospitalId,
+                                            @Param("from") LocalDateTime from,
+                                            @Param("to") LocalDateTime to);
 }

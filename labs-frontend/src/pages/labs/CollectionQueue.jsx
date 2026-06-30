@@ -1,331 +1,376 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Beaker,
-    Clock,
-    AlertTriangle,
-    Zap,
-    Droplet,
     Search,
     Loader2,
-    User as UserIcon,
-    Stethoscope,
-    UtensilsCrossed,
-    RefreshCw,
     CheckCircle2,
     XCircle,
     Inbox,
+    Clock,
+    Printer,
+    Droplet,
+    User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { collectionApi } from "@/api/labsClient";
-import { Badge, Button } from "@/components/ui";
-import BulkCollectModal from "@/components/modals/BulkCollectModal";
+import { collectionApi, labApi, specimenApi } from "@/api/labsClient";
+import { printBarcodes } from "@/utils/printBarcodes";
+import { fmtId } from "@/utils/idFormat";
+import { fmtDateTime } from "@/utils/date";
 
-const PRIORITY_META = {
-    STAT:    { tone: "danger",  icon: Zap,            label: "STAT" },
-    URGENT:  { tone: "warning", icon: AlertTriangle,  label: "URGENT" },
-    ROUTINE: { tone: "neutral", icon: Clock,          label: "ROUTINE" },
+// One day in YYYY-MM-DD — Vite-safe (no Date.now polyfill needed).
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+// Order-level status pill — same vocab as LabQueue + an extra "Pending" for
+// rows synthesized from PENDING_COLLECTION orders that don't have a specimen
+// row yet (the Mark Collected affordance lives there).
+const STATUS_META = {
+    PENDING_COLLECTION: { label: "Pending Collection", cls: "is-pending" },
+    AWAITING_REPORT:    { label: "Collected",          cls: "is-awaiting" },
+    IN_PROGRESS:        { label: "In Progress",        cls: "is-progress" },
+    REPORT_GENERATED:   { label: "Reported",           cls: "is-reported" },
+    BILLED:             { label: "Billed",             cls: "is-billed"   },
+    CANCELLED:          { label: "Cancelled",          cls: "is-billed"   },
 };
 
-const PRIORITY_FILTERS = ["ALL", "STAT", "URGENT", "ROUTINE"];
-
 /**
- * Collection Console — front-of-house queue used by the phlebotomist
- * at the sample-collection desk.
+ * Collections — read-only specimen log + collect-fallback affordance.
  *
- * Layout:
- *   - Top: 4-tile stats strip (Patients waiting / Orders waiting /
- *     STAT chip / Collected today / Awaiting receive / Rejected today)
- *   - Filter row: priority pill + search box (UHID / name / phone)
- *   - Patient cards (sorted STAT → URGENT → ROUTINE → oldest first).
- *     Each card shows the patient header, full list of pending orders,
- *     and the resolved tube plan. One "Collect & print" button opens
- *     BulkCollectModal which fires the atomic bulk-collect.
+ * Two row types in one list:
+ *   1. specimen — a collected tube. Print Barcode action.
+ *   2. order    — a still-pending order that hasn't been collected yet
+ *                 (synthesized from PENDING_COLLECTION lab_orders for the
+ *                 same window). Mark Collected action. Once collected, the
+ *                 row flips to the specimen shape on next refresh.
+ *
+ * Defaults to today's window. Search filters by patient name, UHID, test
+ * name, accession, or barcode — bench tech can hand-scan a barcode into
+ * the search box to surface a single row instantly.
  */
 export default function CollectionQueue() {
     const { user } = useAuth();
     const { notify } = useNotification();
 
-    const [queue, setQueue] = useState([]);
-    const [stats, setStats] = useState({
-        pendingPatients: 0,
-        pendingOrders: 0,
-        pendingStat: 0,
-        pendingUrgent: 0,
-        collectedToday: 0,
-        rejectedToday: 0,
-        awaitingReceiveToday: 0,
-    });
-    const [loading, setLoading] = useState(true);
-    const [priorityFilter, setPriorityFilter] = useState("ALL");
+    const [from, setFrom] = useState(todayIso);
+    const [to, setTo] = useState(todayIso);
     const [search, setSearch] = useState("");
-    const [collectFor, setCollectFor] = useState(null);
+    const [specimens, setSpecimens] = useState([]);
+    const [pendingOrders, setPendingOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [actingOn, setActingOn] = useState(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         if (!user?.hospitalId) return;
         setLoading(true);
         try {
-            const [q, s] = await Promise.all([collectionApi.queue(), collectionApi.stats()]);
-            setQueue(q ?? []);
-            setStats(s ?? stats);
-        } catch {
-            notify("Failed to load collection queue", "error");
+            // Pending orders only loaded when the window includes today — older
+            // orders that never got collected stay surfaced on Lab Queue.
+            const includeToday = from <= todayIso() && todayIso() <= to;
+            const [logRows, queueRows] = await Promise.all([
+                collectionApi.log({ from, to }),
+                includeToday ? collectionApi.queue() : Promise.resolve([]),
+            ]);
+            setSpecimens(Array.isArray(logRows) ? logRows : []);
+            // The /queue endpoint groups by patient; flatten to one row per order
+            // for the unified table.
+            const flat = (queueRows || []).flatMap((p) =>
+                (p.orders || []).map((o) => ({
+                    rowType: "ORDER",
+                    labOrderId: o.id,
+                    serviceName: o.serviceName,
+                    accessionNumber: o.accessionNumber,
+                    priority: o.priority,
+                    orderStatus: "PENDING_COLLECTION",
+                    sampleType: o.sampleType,
+                    patientId: p.patientId,
+                    patientName: p.patientName,
+                    patientUhid: p.patientUhid,
+                    createdAt: o.createdAt,
+                }))
+            );
+            setPendingOrders(flat);
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load collections", "error");
         } finally {
             setLoading(false);
         }
+    }, [user?.hospitalId, from, to, notify]);
+
+    useEffect(() => { load(); }, [load]);
+
+    const handleMarkCollected = async (row) => {
+        setActingOn(`order-${row.labOrderId}`);
+        try {
+            await labApi.markCollected(row.labOrderId);
+            notify("Sample collected — specimen row created, barcode ready to print", "success");
+            load();
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to mark collected", "error");
+        } finally {
+            setActingOn(null);
+        }
     };
 
-    useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.hospitalId]);
-
-    const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return queue.filter((p) => {
-            if (priorityFilter !== "ALL" && p.highestPriority !== priorityFilter) return false;
-            if (!q) return true;
-            return (
-                (p.patientName || "").toLowerCase().includes(q) ||
-                (p.patientUhid || "").toLowerCase().includes(q) ||
-                (p.patientPhone || "").toLowerCase().includes(q) ||
-                (p.orders || []).some((o) =>
-                    (o.serviceName || "").toLowerCase().includes(q),
-                )
-            );
+    const handlePrintForSpecimen = (s) => {
+        printBarcodes({
+            patient: { name: s.patientName, uhid: s.patientUhid },
+            specimens: [{
+                barcode: s.barcode,
+                containerType: s.containerType,
+                volumeMl: s.volumeMl,
+                accessionNumber: s.accessionNumber,
+            }],
         });
-    }, [queue, search, priorityFilter]);
+    };
+
+    // Fallback path: PENDING order has no specimen yet — fetch what the
+    // markCollected just created on the backend, then print.
+    const handlePrintForOrder = async (row) => {
+        setActingOn(`order-${row.labOrderId}`);
+        try {
+            const created = await specimenApi.listForOrder(row.labOrderId);
+            if (!created || created.length === 0) {
+                notify("No specimen on this order yet — Mark Collected first", "warning");
+                return;
+            }
+            printBarcodes({
+                patient: { name: row.patientName, uhid: row.patientUhid },
+                specimens: created.map((s) => ({
+                    barcode: s.barcode,
+                    containerType: s.containerType,
+                    volumeMl: s.volumeMl,
+                    accessionNumber: row.accessionNumber,
+                })),
+            });
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to fetch specimen", "error");
+        } finally {
+            setActingOn(null);
+        }
+    };
+
+    // Unified rows for the table — collected specimens (newest first), then
+    // pending orders (still need to be collected). Search filter applies to
+    // both halves.
+    const rows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const specimenRows = specimens.map((s) => ({ ...s, rowType: "SPECIMEN" }));
+        const all = [...specimenRows, ...pendingOrders];
+        if (!q) return all;
+        return all.filter((r) =>
+            (r.patientName || "").toLowerCase().includes(q) ||
+            (r.patientUhid || "").toLowerCase().includes(q) ||
+            (r.serviceName || "").toLowerCase().includes(q) ||
+            (r.accessionNumber || "").toLowerCase().includes(q) ||
+            (r.barcode || "").toLowerCase().includes(q)
+        );
+    }, [specimens, pendingOrders, search]);
+
+    const collectedCount = specimens.length;
+    const pendingCount = pendingOrders.length;
+    const rejectedCount = specimens.filter((s) => s.rejected).length;
 
     return (
         <div className="hms-rad-page">
             <div className="hms-rad-page__head">
                 <div>
                     <h1 className="hms-rad-page__title">
-                        <Beaker className="w-5 h-5 hms-rad-page__title-icon" /> Collection Queue
+                        <Beaker className="w-5 h-5 hms-rad-page__title-icon" /> Collections
                     </h1>
                     <p className="hms-rad-page__sub">
-                        Front-of-house · patient pickups · atomic bulk-collect with auto-printed labels
+                        Specimen log — every tube collected, with chain of custody and barcode reprint.
+                        Pending orders shown for today so the bench can collect from here too.
                     </p>
                 </div>
                 <div className="hms-rad-page__chips">
                     <div className="hms-rad-chip-row">
+                        <span className="hms-rad-chip is-emerald">
+                            <CheckCircle2 className="w-3 h-3" /> {collectedCount} collected
+                        </span>
                         <span className="hms-rad-chip is-amber">
-                            <UserIcon className="w-3 h-3" /> {stats.pendingPatients} waiting
+                            <Clock className="w-3 h-3" /> {pendingCount} pending
                         </span>
-                        <span className="hms-rad-chip is-rose">
-                            <Zap className="w-3 h-3" /> {stats.pendingStat} STAT
-                        </span>
-                        <span className="hms-rad-chip is-slate">
-                            <Droplet className="w-3 h-3" /> {stats.pendingOrders} orders
-                        </span>
+                        {rejectedCount > 0 && (
+                            <span className="hms-rad-chip is-rose">
+                                <XCircle className="w-3 h-3" /> {rejectedCount} rejected
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <div className="hms-rad-stat-grid">
-                <StatTile tone="amber" icon={UserIcon} label="Patients waiting" value={stats.pendingPatients} />
-                <StatTile tone="slate" icon={Droplet} label="Orders pending" value={stats.pendingOrders} />
-                <StatTile tone="emerald" icon={CheckCircle2} label="Collected today" value={stats.collectedToday} />
-                <StatTile tone="rose" icon={XCircle} label="Rejected today" value={stats.rejectedToday} />
-            </div>
-
+            {/* Date range + search */}
             <div className="hms-rad-filterbar">
-                <div className="hms-rad-priority-row">
-                    {PRIORITY_FILTERS.map((p) => (
-                        <button
-                            key={p}
-                            onClick={() => setPriorityFilter(p)}
-                            className={`hms-rad-priority-btn ${priorityFilter === p ? "is-on" : ""}`}
-                        >
-                            {p}
-                        </button>
-                    ))}
+                <div className="hms-rad-priority-row" style={{ gap: 12 }}>
+                    <label className="hms-rad-priority-btn" style={{ cursor: "default" }}>
+                        From
+                        <input
+                            type="date"
+                            value={from}
+                            max={to}
+                            onChange={(e) => setFrom(e.target.value)}
+                            style={{ marginLeft: 8, border: "none", background: "transparent" }}
+                        />
+                    </label>
+                    <label className="hms-rad-priority-btn" style={{ cursor: "default" }}>
+                        To
+                        <input
+                            type="date"
+                            value={to}
+                            min={from}
+                            onChange={(e) => setTo(e.target.value)}
+                            style={{ marginLeft: 8, border: "none", background: "transparent" }}
+                        />
+                    </label>
                 </div>
                 <div className="hms-rad-search">
                     <Search className="w-4 h-4 hms-rad-search__icon" />
                     <input
                         className="hms-rad-search__input"
-                        placeholder="Search patient, UHID, phone, test…"
+                        placeholder="Patient · UHID · test · accession · barcode"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <button
-                    className="hms-rad-row__view-btn"
-                    onClick={load}
-                    title="Refresh"
-                    style={{ marginLeft: 8 }}
-                >
-                    <RefreshCw className="w-3 h-3" /> Refresh
-                </button>
-                <div className="text-12 text-gray-500 ml-auto inline-flex items-center gap-1">
-                    <Inbox size={12} /> {stats.awaitingReceiveToday} awaiting receive at the lab
-                </div>
             </div>
 
-            {loading ? (
-                <div className="hms-rad-section__loading">
-                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <div className="hms-rad-section is-slate">
+                <div className="hms-rad-section__head">
+                    <p className="hms-rad-section__title">Specimens</p>
+                    <p className="hms-rad-section__sub">
+                        Each row is one tube. Pending rows are orders that haven't been collected yet.
+                    </p>
                 </div>
-            ) : filtered.length === 0 ? (
-                <div className="hms-rad-section">
+                {loading ? (
+                    <div className="hms-rad-section__loading">
+                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    </div>
+                ) : rows.length === 0 ? (
                     <div className="hms-rad-section__empty">
-                        <Beaker className="w-5 h-5 hms-rad-section__empty-icon" />
-                        <p className="hms-rad-section__empty-title">No pending pickups</p>
+                        <Inbox className="w-5 h-5 hms-rad-section__empty-icon" />
+                        <p className="hms-rad-section__empty-title">No specimens in this window</p>
                         <p className="hms-rad-section__empty-sub">
-                            {search || priorityFilter !== "ALL"
-                                ? "No patients match the current filters."
-                                : "New orders from HMS will show up here as they're placed."}
+                            Try widening the date range, or hit Mark Collected on Lab Queue to add one.
                         </p>
                     </div>
-                </div>
-            ) : (
-                <div className="flex flex-col gap-3 mt-2">
-                    {filtered.map((p) => (
-                        <PatientCard
-                            key={p.patientId}
-                            patient={p}
-                            onCollect={() => setCollectFor(p)}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {collectFor && (
-                <BulkCollectModal
-                    patient={collectFor}
-                    onClose={() => setCollectFor(null)}
-                    onCollected={() => {
-                        setCollectFor(null);
-                        load();
-                    }}
-                />
-            )}
-        </div>
-    );
-}
-
-function StatTile({ tone, icon: Icon, label, value }) {
-    return (
-        <div className={`hms-rad-stat is-${tone}`}>
-            <div>
-                <p className="hms-rad-stat__label">{label}</p>
-                <p className="hms-rad-stat__value">{value}</p>
-            </div>
-            <Icon className="hms-rad-stat__icon" />
-        </div>
-    );
-}
-
-function PatientCard({ patient, onCollect }) {
-    const priMeta = PRIORITY_META[patient.highestPriority] || PRIORITY_META.ROUTINE;
-    const PIcon = priMeta.icon;
-    const waitMin = patient.earliestPendingAt
-        ? Math.max(0, Math.round((Date.now() - new Date(patient.earliestPendingAt).getTime()) / 60000))
-        : null;
-    const hasFasting = (patient.containerPlan || []).some((t) => t.fastingRequired);
-
-    return (
-        <div className="border border-gray-200 rounded-xl bg-white p-3 flex flex-col gap-3 shadow-sm">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-start gap-3">
-                    <div className="hms-rad-patient__avatar" style={{ marginTop: 2 }}>
-                        {(patient.patientName || "?").charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-14 text-gray-900">{patient.patientName}</span>
-                            <Badge tone={priMeta.tone === "danger" ? "danger" : priMeta.tone === "warning" ? "warning" : "neutral"} soft>
-                                <PIcon size={11} className="inline mr-1" />
-                                {priMeta.label}
-                            </Badge>
-                            {hasFasting && (
-                                <Badge tone="warning" soft>
-                                    <UtensilsCrossed size={11} className="inline mr-1" /> fasting
-                                </Badge>
-                            )}
-                            {waitMin != null && (
-                                <span className="text-11 text-gray-500">
-                                    <Clock size={10} className="inline mr-1" /> waiting {waitMin} min
-                                </span>
-                            )}
+                ) : (
+                    <div className="hms-rad-section__list">
+                        <div className="hms-rad-table-head">
+                            {["Patient", "Investigation", "Sample / tube", "Accession", "Collected", "Status", ""].map((h) => (
+                                <p key={h} className="hms-rad-table-head__cell">{h}</p>
+                            ))}
                         </div>
-                        <div className="text-11 text-gray-500 mt-0.5">
-                            UHID {patient.patientUhid || "—"}
-                            {patient.ageYears != null && ` · ${patient.ageYears} yrs`}
-                            {patient.patientSex && ` · ${patient.patientSex}`}
-                            {patient.patientPhone && ` · ${patient.patientPhone}`}
-                        </div>
-                    </div>
-                </div>
-                <Button variant="primary" onClick={onCollect}>
-                    <Beaker size={14} /> Collect &amp; print ({(patient.containerPlan || []).length} tube{(patient.containerPlan || []).length === 1 ? "" : "s"})
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                    <div className="text-11 font-bold text-gray-500 uppercase tracking-wide mb-1">
-                        Orders ({patient.orders?.length || 0})
-                    </div>
-                    <div className="flex flex-col gap-1 text-12">
-                        {(patient.orders || []).map((o) => {
-                            const om = PRIORITY_META[o.priority] || PRIORITY_META.ROUTINE;
-                            const OIcon = om.icon;
-                            return (
-                                <div key={o.id} className="flex items-center gap-2 py-0.5">
-                                    <Badge tone={om.tone === "danger" ? "danger" : om.tone === "warning" ? "warning" : "neutral"} soft>
-                                        <OIcon size={10} className="inline mr-0.5" />
-                                        {o.priority}
-                                    </Badge>
-                                    <span className="font-bold text-gray-900 flex-1">{o.serviceName}</span>
-                                    {o.resolvedContainer && (
-                                        <Badge tone="info" soft>{o.resolvedContainer}</Badge>
-                                    )}
-                                    {o.referredByName && (
-                                        <span className="inline-flex items-center gap-1 text-11 text-gray-500">
-                                            <Stethoscope size={10} />
-                                            {o.referredByName}
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div>
-                    <div className="text-11 font-bold text-gray-500 uppercase tracking-wide mb-1">
-                        Tubes ({(patient.containerPlan || []).length})
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        {(patient.containerPlan || []).map((t) => (
-                            <div
-                                key={t.containerType}
-                                className="border border-gray-200 rounded px-2 py-1.5 bg-gray-50/40"
-                            >
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge tone="info" soft>{t.containerType}</Badge>
-                                    {t.volumeMl != null && (
-                                        <span className="text-11 text-gray-700">{t.volumeMl} mL</span>
-                                    )}
-                                    {t.fastingRequired && (
-                                        <Badge tone="warning" soft>fasting</Badge>
-                                    )}
-                                    <span className="text-11 text-gray-500 ml-auto">
-                                        serves {t.servesOrderIds.length} order(s)
-                                    </span>
-                                </div>
-                                <div className="text-11 text-gray-500 mt-0.5">
-                                    {t.servesTestNames.join(" · ")}
-                                </div>
-                            </div>
+                        {rows.map((row) => (
+                            <SpecimenRow
+                                key={row.rowType === "SPECIMEN" ? `s-${row.specimenId}` : `o-${row.labOrderId}`}
+                                row={row}
+                                actingOn={actingOn}
+                                onMarkCollected={handleMarkCollected}
+                                onPrint={row.rowType === "SPECIMEN" ? handlePrintForSpecimen : handlePrintForOrder}
+                            />
                         ))}
-                        {(patient.containerPlan || []).length === 0 && (
-                            <div className="text-12 text-gray-400">— no tubes —</div>
-                        )}
                     </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
+    const isSpecimen = row.rowType === "SPECIMEN";
+    const status = isSpecimen ? row.orderStatus : "PENDING_COLLECTION";
+    const meta = STATUS_META[status] || STATUS_META.PENDING_COLLECTION;
+    const acting = actingOn === `order-${row.labOrderId}`;
+    const printable = isSpecimen || status !== "PENDING_COLLECTION";
+
+    return (
+        <div className="hms-rad-row">
+            <div className="hms-rad-patient">
+                <div className="hms-rad-patient__avatar">
+                    {row.patientName ? row.patientName[0] : <UserIcon className="w-4 h-4 text-gray-400" />}
                 </div>
+                <div>
+                    <p className="hms-rad-patient__name">{row.patientName ?? "—"}</p>
+                    <p className="hms-rad-patient__uhid">{fmtId(row.patientUhid)}</p>
+                </div>
+            </div>
+            <div>
+                <p className="hms-rad-row__svc-name">{row.serviceName ?? "—"}</p>
+                {row.collectedByName && (
+                    <p className="hms-rad-row__svc-bill">By {row.collectedByName}</p>
+                )}
+            </div>
+            <div>
+                {row.containerType || row.sampleType ? (
+                    <div className="hms-rad-tech">
+                        <Droplet className="w-3 h-3 hms-rad-tech__icon" />
+                        <p>
+                            {row.containerType ?? row.sampleType}
+                            {row.volumeMl ? ` · ${row.volumeMl} mL` : ""}
+                        </p>
+                    </div>
+                ) : (
+                    <p className="hms-rad-tech-empty">—</p>
+                )}
+                {row.barcode && (
+                    <p className="hms-rad-row__svc-bill" style={{ fontFamily: "monospace", fontSize: 11 }}>
+                        {row.barcode}
+                    </p>
+                )}
+            </div>
+            <div>
+                {row.accessionNumber ? (
+                    <code className="hms-rad-row__svc-bill">{row.accessionNumber}</code>
+                ) : (
+                    <p className="hms-rad-tech-empty">—</p>
+                )}
+            </div>
+            <div>
+                {isSpecimen && row.collectedAt ? (
+                    <p className="hms-rad-row__date" style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <Clock className="w-3 h-3 shrink-0" />
+                        {fmtDateTime(row.collectedAt)}
+                    </p>
+                ) : (
+                    <p className="hms-rad-tech-empty">—</p>
+                )}
+            </div>
+            <div>
+                {row.rejected ? (
+                    <span className="hms-lab-status-badge is-billed">
+                        <span className="hms-lab-status-badge__dot" /> Rejected
+                    </span>
+                ) : (
+                    <span className={`hms-lab-status-badge ${meta.cls}`}>
+                        <span className="hms-lab-status-badge__dot" /> {meta.label}
+                    </span>
+                )}
+            </div>
+            <div className="hms-rad-row__action" style={{ display: "flex", gap: 6 }}>
+                {!isSpecimen && (
+                    <button
+                        type="button"
+                        onClick={() => onMarkCollected(row)}
+                        disabled={acting}
+                        className="hms-rad-row__view-btn"
+                        title="Mark sample collected — also creates the specimen row + barcode"
+                    >
+                        <CheckCircle2 className="w-3 h-3" />
+                        {acting ? "Working…" : "Mark Collected"}
+                    </button>
+                )}
+                {printable && (
+                    <button
+                        type="button"
+                        onClick={() => onPrint(row)}
+                        disabled={acting || row.rejected}
+                        className="hms-rad-row__view-btn"
+                        title="Print specimen label"
+                    >
+                        <Printer className="w-3 h-3" />
+                        Print
+                    </button>
+                )}
             </div>
         </div>
     );
