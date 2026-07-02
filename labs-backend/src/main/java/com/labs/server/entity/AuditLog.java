@@ -41,8 +41,13 @@ public class AuditLog {
     @Column(name = "entity_id", nullable = false, length = 64)
     private String entityId;
 
-    /** CREATE | UPDATE | DELETE | STATUS_CHANGE | READ_SENSITIVE */
-    @Column(name = "operation", nullable = false, length = 20)
+    /**
+     * Operation taxonomy — see {@code chk_audit_log_operation} CHECK constraint
+     * for the live allowlist. Column is VARCHAR(50) (V19) to accommodate the
+     * Phase 7 / Phase 9 lifecycle operations like {@code AUTO_CREATE_ON_COLLECT}
+     * (22 chars) that overflowed the original VARCHAR(20).
+     */
+    @Column(name = "operation", nullable = false, length = 50)
     private String operation;
 
     @Column(name = "user_id")
