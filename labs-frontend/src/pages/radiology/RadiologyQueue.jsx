@@ -210,6 +210,15 @@ function RadiologyQueue() {
             </div>
 
             <div className="hms-rad-filterbar">
+                <div className="hms-rad-search">
+                    <Search className="w-4 h-4 hms-rad-search__icon" />
+                    <input
+                        className="hms-rad-search__input"
+                        placeholder="Search patient, test, UHID, technician…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
                 <div className="hms-rad-section-tabs" role="tablist" aria-label="Queue section">
                     <button
                         type="button"
@@ -244,15 +253,6 @@ function RadiologyQueue() {
                         Awaiting Reports
                         <span className="hms-rad-section-tab__count">{awaiting.length}</span>
                     </button>
-                </div>
-                <div className="hms-rad-search">
-                    <Search className="w-4 h-4 hms-rad-search__icon" />
-                    <input
-                        className="hms-rad-search__input"
-                        placeholder="Search patient, test, UHID, technician…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
                 </div>
             </div>
 
