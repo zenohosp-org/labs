@@ -127,12 +127,22 @@ function LabReports() {
                                     </div>
                                     <div>
                                         <p className="hms-rad-row__svc-name">{order.serviceName}</p>
-                                        {order.sampleType && <p className="hms-rad-row__svc-bill">Sample: {order.sampleType}</p>}
-                                        {order.collectedAt && (
-                                            <p className="hms-rad-row__svc-bill">Collected: {fmtDateTime(order.collectedAt)}</p>
+                                        {order.sampleType && (
+                                            <p className="hms-rad-row__svc-doc">Sample · {order.sampleType}</p>
                                         )}
-                                        {order.startedAt && (
-                                            <p className="hms-rad-row__svc-bill">Started: {fmtDateTime(order.startedAt)}</p>
+                                        {(order.collectedAt || order.startedAt) && (
+                                            <div className="hms-lab-row__lifecycle">
+                                                {order.collectedAt && (
+                                                    <span className="hms-lab-row__lifecycle-item">
+                                                        Collected {fmtDateTime(order.collectedAt)}
+                                                    </span>
+                                                )}
+                                                {order.startedAt && (
+                                                    <span className="hms-lab-row__lifecycle-item">
+                                                        Started {fmtDateTime(order.startedAt)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                     <div className="hms-rad-tech">

@@ -7004,45 +7004,61 @@
 .hms-rad-stat {
     background: var(--hms-white);
     border: 1px solid var(--hms-gray-200);
-    border-left: 4px solid var(--hms-gray-200);
     border-radius: 8px;
-    padding: 20px;
+    padding: 18px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    box-shadow: var(--hms-shadow-card);
+    transition: box-shadow var(--hms-transition-normal), transform var(--hms-transition-normal), border-color var(--hms-transition-normal);
 }
 
-.hms-rad-stat.is-amber    { border-left-color: #fbbf24; }
-.hms-rad-stat.is-slate    { border-left-color: var(--hms-gray-400); }
-.hms-rad-stat.is-emerald  { border-left-color: #34d399; }
+/* Clickable stat cards (dashboard) lift like HMS interactive cards */
+a.hms-rad-stat,
+.hms-rad-stat.is-link {
+    text-decoration: none;
+    cursor: pointer;
+}
+a.hms-rad-stat:hover,
+.hms-rad-stat.is-link:hover {
+    box-shadow: var(--hms-shadow-card-hover);
+    transform: translateY(-2px);
+    border-color: var(--hms-gray-300);
+}
 
 .hms-rad-stat__label {
     margin: 0;
     font-size: 12px;
-    font-weight: 600;
-    color: var(--hms-gray-400);
+    font-weight: 700;
+    color: var(--hms-gray-500);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
 }
 
 .hms-rad-stat__value {
     margin: 4px 0 0;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
+    color: var(--hms-gray-900);
+    font-variant-numeric: tabular-nums;
 }
 
-.hms-rad-stat.is-amber   .hms-rad-stat__value { color: #f59e0b; }
-.hms-rad-stat.is-slate   .hms-rad-stat__value { color: var(--hms-gray-700); }
-.hms-rad-stat.is-emerald .hms-rad-stat__value { color: var(--hms-success); }
-
+/* Icon sits in a soft tinted tile — colour lives here, not on the value */
 .hms-rad-stat__icon {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
+    padding: 11px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background: var(--hms-gray-100);
+    color: var(--hms-gray-600);
+    border: 1px solid var(--hms-gray-200);
 }
 
-.hms-rad-stat.is-amber   .hms-rad-stat__icon { color: #fde68a; }
-.hms-rad-stat.is-slate   .hms-rad-stat__icon { color: var(--hms-gray-300); }
-.hms-rad-stat.is-emerald .hms-rad-stat__icon { color: rgba(16, 185, 129, 0.3); }
+.hms-rad-stat.is-amber   .hms-rad-stat__icon { background: var(--hms-warning-bg); color: #b45309; border-color: #fde68a; }
+.hms-rad-stat.is-slate   .hms-rad-stat__icon { background: var(--hms-gray-100); color: var(--hms-gray-600); border-color: var(--hms-gray-200); }
+.hms-rad-stat.is-emerald .hms-rad-stat__icon { background: var(--hms-success-bg); color: #047857; border-color: #a7f3d0; }
 
 .hms-rad-filterbar {
     background: var(--hms-white);
@@ -7195,13 +7211,10 @@
 .hms-rad-section {
     background: var(--hms-white);
     border: 1px solid var(--hms-gray-200);
-    border-top: 4px solid var(--hms-gray-300);
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: var(--hms-shadow-xs);
 }
-
-.hms-rad-section.is-amber { border-top-color: #fbbf24; }
-.hms-rad-section.is-slate { border-top-color: var(--hms-gray-400); }
 
 .hms-rad-section__head {
     padding: 16px 24px;
@@ -7274,7 +7287,7 @@
         border-bottom: 1px solid var(--hms-gray-100);
     }
     .hms-rad-table-head.is-reports {
-        grid-template-columns: 2.5fr 2fr 2fr 1.5fr 1fr auto;
+        grid-template-columns: 2.2fr 2.4fr 1.5fr 1.6fr 1fr 1.1fr auto;
     }
 }
 
@@ -7302,7 +7315,7 @@
         align-items: center;
     }
     .hms-rad-row.is-reports {
-        grid-template-columns: 2.5fr 2fr 2fr 1.5fr 1fr auto;
+        grid-template-columns: 2.2fr 2.4fr 1.5fr 1.6fr 1fr 1.1fr auto;
     }
 }
 
@@ -7486,6 +7499,45 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 6px;
+}
+
+/* Date-range picker on the Collections filter bar */
+.hms-rad-daterange {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hms-rad-datefield {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--hms-gray-500);
+    font-family: var(--hms-font-family);
+}
+
+.hms-rad-datefield__input {
+    margin-left: 8px;
+    border: none;
+    background: transparent;
+    font-family: var(--hms-font-family);
+    font-size: 13px;
+    color: var(--hms-gray-800);
+    outline: none;
+}
+
+/* Specimen barcode — monospace is deliberate (scanner-matched glyphs) */
+.hms-rad-barcode {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: var(--hms-gray-600);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .hms-rad-row__action-btn {

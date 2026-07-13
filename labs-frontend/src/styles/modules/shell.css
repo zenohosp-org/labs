@@ -146,7 +146,7 @@
     margin: 0 0 0 12px;
     width: calc(100% - 1.5rem);
     border-radius: 0.5rem;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 500;
     text-decoration: none;
     color: #020617;
@@ -165,7 +165,7 @@
 }
 
 .hms-sidebar__link.is-indent {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
     padding: 7px 0.75rem;
     border-radius: 0.5rem;
@@ -213,7 +213,7 @@
     background: transparent;
     border-radius: 0.625rem;
     font-family: var(--hms-font-family);
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 500;
     text-align: left;
     cursor: pointer;
@@ -252,27 +252,32 @@
 }
 
 
-/* Footer (external apps) */
+/* Footer (external apps) — HMS-parity lime block, the one colour pop
+   in an otherwise neutral chrome */
 .hms-sidebar__footer {
-    border-top: 1px solid var(--hms-gray-200);
-    background: var(--hms-gray-50);
-    padding: 10px;
+    border-top: 1px solid #edf8df;
+    background: #f8fff1;
+    padding: 0 10px 10px;
     display: flex;
     flex-direction: column;
     gap: 2px;
     flex-shrink: 0;
 }
 
+.hms-sidebar__footer .hms-sidebar__section-label {
+    color: #98d50c;
+}
+
 .hms-sidebar__ext {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 12px;
+    padding: 8px 12px;
     border-radius: 8px;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 500;
     text-decoration: none;
-    color: var(--hms-gray-700);
+    color: var(--hms-gray-950, #020617);
     transition: background 150ms ease, color 150ms ease;
 }
 
@@ -283,7 +288,7 @@
 }
 
 .hms-sidebar__ext:hover {
-    background: var(--hms-gray-100);
+    background: #d1f1ba;
     color: var(--hms-gray-900);
 }
 

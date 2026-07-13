@@ -5,3 +5,49 @@
    utilities.css; reusable patterns (avatar, icon tile, kv row, etc.)
    live in hms-system.css. This file contains only what's unique to dashboard.
    =================================================================== */
+
+/* Recent Reports panel — compact list under the stat cards. Rows are
+   clickable and mirror the Lab Reports table look at dashboard density. */
+.hms-dash-recent__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.hms-dash-recent__all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hms-gray-600);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.hms-dash-recent__all:hover {
+    background: var(--hms-gray-100);
+    color: var(--hms-gray-900);
+}
+
+.hms-dash-recent__row {
+    cursor: pointer;
+}
+
+@media (min-width: 768px) {
+    .hms-rad-row.hms-dash-recent__row {
+        grid-template-columns: 2.2fr 2fr 1.6fr auto;
+    }
+}
+
+.hms-dash-recent__go {
+    color: var(--hms-gray-400);
+    transition: color 0.15s;
+}
+
+.hms-dash-recent__row:hover .hms-dash-recent__go {
+    color: var(--hms-gray-900);
+}

@@ -201,25 +201,25 @@ export default function CollectionQueue() {
 
             {/* Date range + search */}
             <div className="hms-rad-filterbar">
-                <div className="hms-rad-priority-row" style={{ gap: 12 }}>
-                    <label className="hms-rad-priority-btn" style={{ cursor: "default" }}>
+                <div className="hms-rad-daterange">
+                    <label className="hms-rad-datefield">
                         From
                         <input
                             type="date"
+                            className="hms-rad-datefield__input"
                             value={from}
                             max={to}
                             onChange={(e) => setFrom(e.target.value)}
-                            style={{ marginLeft: 8, border: "none", background: "transparent" }}
                         />
                     </label>
-                    <label className="hms-rad-priority-btn" style={{ cursor: "default" }}>
+                    <label className="hms-rad-datefield">
                         To
                         <input
                             type="date"
+                            className="hms-rad-datefield__input"
                             value={to}
                             min={from}
                             onChange={(e) => setTo(e.target.value)}
-                            style={{ marginLeft: 8, border: "none", background: "transparent" }}
                         />
                     </label>
                 </div>
@@ -297,7 +297,7 @@ function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
             <div>
                 <p className="hms-rad-row__svc-name">{row.serviceName ?? "—"}</p>
                 {row.collectedByName && (
-                    <p className="hms-rad-row__svc-bill">By {row.collectedByName}</p>
+                    <p className="hms-rad-row__svc-doc">By {row.collectedByName}</p>
                 )}
             </div>
             <div>
@@ -312,11 +312,7 @@ function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
                 ) : (
                     <p className="hms-rad-tech-empty">—</p>
                 )}
-                {row.barcode && (
-                    <p className="hms-rad-row__svc-bill" style={{ fontFamily: "monospace", fontSize: 11 }}>
-                        {row.barcode}
-                    </p>
-                )}
+                {row.barcode && <p className="hms-rad-barcode">{row.barcode}</p>}
             </div>
             <div>
                 {row.accessionNumber ? (
@@ -327,7 +323,7 @@ function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
             </div>
             <div>
                 {isSpecimen && row.collectedAt ? (
-                    <p className="hms-rad-row__date" style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <p className="hms-rad-row__date">
                         <Clock className="w-3 h-3 shrink-0" />
                         {fmtDateTime(row.collectedAt)}
                     </p>
@@ -346,7 +342,7 @@ function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
                     </span>
                 )}
             </div>
-            <div className="hms-rad-row__action" style={{ display: "flex", gap: 6 }}>
+            <div className="hms-rad-row__action">
                 {!isSpecimen && (
                     <button
                         type="button"
