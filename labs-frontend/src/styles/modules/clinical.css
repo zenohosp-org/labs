@@ -6941,6 +6941,15 @@
     gap: 20px;
 }
 
+/* Page gutter — HMS pads the shell content (zu-dashboard = 28px) but labs
+   pages render straight into the plain shell, leaving the page head flush
+   against the topnav/sidebar. Scope to :not(.zu-dashboard) so the dashboard
+   (already padded by the shell) doesn't double up. */
+.zu-app-shell-content:not(.zu-dashboard) > .hms-rad-page,
+.zu-app-shell-content:not(.zu-dashboard) > .hms-rad-rep-view {
+    padding: 24px 28px 32px;
+}
+
 .hms-rad-page__head {
     display: flex;
     align-items: flex-start;
