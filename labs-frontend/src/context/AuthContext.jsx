@@ -4,6 +4,19 @@ import { getMe, logout as apiLogout } from "@/api/labsClient";
 const AuthContext = createContext(null);
 const LOGOUT_FLAG_KEY = "labs_logout_in_progress";
 
+/** "hospital_admin" → "Hospital Admin" — same display rule as HMS. */
+const humanizeRole = (role) =>
+    role
+        ? String(role)
+              .split("_")
+              .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+              .join(" ")
+        : "";
+
+/** Normalise the /me payload: guarantee roleDisplay like HMS's AuthContext. */
+const normalizeUser = (raw) =>
+    raw ? { ...raw, roleDisplay: raw.roleDisplay || humanizeRole(raw.role) } : raw;
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -42,7 +55,7 @@ export function AuthProvider({ children }) {
         );
         Promise.race([getMe(), timeout])
             .then((res) => {
-                const userData = res.data?.data || res.data;
+                const userData = normalizeUser(res.data?.data || res.data);
                 sessionStorage.setItem("labs_user", JSON.stringify(userData));
                 setUser(userData);
             })

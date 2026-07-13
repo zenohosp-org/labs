@@ -419,16 +419,6 @@ function QueueSection({
                                             )}
                                         </p>
                                         <p className="hms-rad-patient__uhid">{fmtId(order.patientUhid)}</p>
-                                        {order.admissionNumber && (
-                                            <p className="hms-rad-patient__uhid" title="IPD admission number — for cross-reference with HMS">
-                                                ADM: <code>{order.admissionNumber}</code>
-                                            </p>
-                                        )}
-                                        {order.accessionNumber && (
-                                            <p className="hms-rad-patient__uhid" title="Lab accession — printed on specimen tube barcode">
-                                                ACC: <code>{order.accessionNumber}</code>
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
                                 <div>

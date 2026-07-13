@@ -13,6 +13,7 @@ import {
     AlertOctagon,
 } from "lucide-react";
 import PerAnalyteResultEntry from "./PerAnalyteResultEntry";
+import { fmtId } from "@/utils/idFormat";
 
 const FLAG_META = {
     LOW: { cls: "is-amber", icon: ArrowDown, label: "LOW" },
@@ -141,7 +142,7 @@ function LabWriteReportModal({ order, onClose, onSaved }) {
                             </h2>
                             <p className="hms-rad-modal__sub">
                                 {order.patientName} · {order.serviceName}
-                                {order.accessionNumber && ` · ACC ${order.accessionNumber}`}
+                                {order.accessionNumber && ` · ACC ${fmtId(order.accessionNumber)}`}
                             </p>
                         </div>
                     </div>

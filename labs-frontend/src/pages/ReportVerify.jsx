@@ -12,6 +12,7 @@ import {
     Hash,
 } from "lucide-react";
 import { reportVerifyApi } from "@/api/labsClient";
+import { fmtId } from "@/utils/idFormat";
 
 /**
  * Public report verification page. Reached via the QR on every signed PDF.
@@ -135,7 +136,7 @@ function Details({ data }) {
         <div style={pageStyles.grid}>
             <Row icon={Building2} label="Hospital" value={data.hospitalName} />
             <Row icon={UserIcon}  label="Patient"  value={data.patientInitials} />
-            <Row icon={Hash}      label="Order"    value={`#${data.labOrderId}${data.accessionNumber ? ` · ACC ${data.accessionNumber}` : ""}`} />
+            <Row icon={Hash}      label="Order"    value={`#${data.labOrderId}${data.accessionNumber ? ` · ACC ${fmtId(data.accessionNumber)}` : ""}`} />
             <Row icon={FileSignature} label="Investigation" value={data.testSummary} />
             <Row icon={Calendar}  label="Signed at" value={fmtDate(data.signedAt)} />
             <Row icon={UserIcon}  label="Signatory"

@@ -316,7 +316,7 @@ function SpecimenRow({ row, actingOn, onMarkCollected, onPrint }) {
             </div>
             <div>
                 {row.accessionNumber ? (
-                    <code className="hms-rad-row__svc-bill">{row.accessionNumber}</code>
+                    <code className="hms-rad-row__svc-bill">{fmtId(row.accessionNumber)}</code>
                 ) : (
                     <p className="hms-rad-tech-empty">—</p>
                 )}

@@ -22,6 +22,7 @@ import {
     Modal,
     Select,
 } from "@/components/ui";
+import { fmtId } from "@/utils/idFormat";
 
 const CONTAINER_OPTIONS = [
     { value: "", label: "Auto" },
@@ -201,7 +202,7 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
                         <Beaker size={18} /> Specimens · {order.patientName}
                         {order.accessionNumber && (
                             <Badge tone="info" soft>
-                                {order.accessionNumber}
+                                {fmtId(order.accessionNumber)}
                             </Badge>
                         )}
                     </span>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import { reportPdfApi } from "@/api/labsClient";
+import { fmtId } from "@/utils/idFormat";
 import {
     Alert,
     Badge,
@@ -122,7 +123,7 @@ export default function ReportActionsModal({ order, onClose }) {
                 <span className="inline-flex items-center gap-2">
                     <FileSignature size={18} /> Report · {order.patientName}
                     {order.accessionNumber && (
-                        <Badge tone="info" soft>{order.accessionNumber}</Badge>
+                        <Badge tone="info" soft>{fmtId(order.accessionNumber)}</Badge>
                     )}
                 </span>
             }

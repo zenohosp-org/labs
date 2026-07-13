@@ -83,6 +83,16 @@ public class JwtUtil {
         return parseToken(token).get("modules", List.class);
     }
 
+    /**
+     * Optional display claims minted by Directory (firstName, lastName,
+     * hospitalName). Empty string when the claim is absent so /user/me can
+     * serialise without null checks.
+     */
+    public String getStringClaim(String token, String claim) {
+        Object v = parseToken(token).get(claim);
+        return v == null ? "" : v.toString();
+    }
+
     public boolean isValid(String token) {
         try {
             parseToken(token);

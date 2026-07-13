@@ -36,6 +36,9 @@ public class AuthController {
             "hospitalId", jwtUtil.getHospitalId(token) != null
                 ? jwtUtil.getHospitalId(token).toString()
                 : "",
+            "firstName", jwtUtil.getStringClaim(token, "firstName"),
+            "lastName", jwtUtil.getStringClaim(token, "lastName"),
+            "hospitalName", jwtUtil.getStringClaim(token, "hospitalName"),
             "modules", jwtUtil.getModules(token) != null
                 ? jwtUtil.getModules(token)
                 : java.util.List.of()));
