@@ -4,6 +4,11 @@ on:
     branches: [main]
     paths:
       - 'labs-frontend/**'
+# Both deploy workflows git-pull the same VPS checkout (/opt/zenohosp/labs);
+# a shared group serializes them so concurrent pulls can't race on the ref.
+concurrency:
+  group: vps-deploy
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
