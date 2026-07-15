@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { getMe, logout as apiLogout } from "@/api/labsClient";
+import { DEV_MOCK_AUTH } from "@/utils/devMockAuth";
 
 const AuthContext = createContext(null);
 const LOGOUT_FLAG_KEY = "labs_logout_in_progress";
@@ -22,7 +23,7 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (import.meta.env.VITE_DEV_MOCK_AUTH === "true") {
+        if (DEV_MOCK_AUTH) {
             setUser({
                 userId: import.meta.env.VITE_MOCK_USER_ID || "1",
                 email: import.meta.env.VITE_MOCK_USER_EMAIL || "dev@zenohosp.com",
@@ -69,7 +70,7 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         const verifyOnFocus = async () => {
             if (!user) return;
-            if (import.meta.env.VITE_DEV_MOCK_AUTH === "true") return;
+            if (DEV_MOCK_AUTH) return;
             try {
                 await getMe();
             } catch (_err) {

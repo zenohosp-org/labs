@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/api/labsClient";
+import { DEV_MOCK_AUTH } from "@/utils/devMockAuth";
 import {
     FlaskConical,
     Microscope,
@@ -70,7 +71,7 @@ export default function Login() {
     const [slide, setSlide] = useState(0);
 
     useEffect(() => {
-        if (import.meta.env.VITE_DEV_MOCK_AUTH === "true") {
+        if (DEV_MOCK_AUTH) {
             navigate("/", { replace: true });
         }
     }, [navigate]);

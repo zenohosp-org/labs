@@ -1,4 +1,5 @@
 import axios from "axios";
+import { DEV_MOCK_AUTH } from "@/utils/devMockAuth";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -13,7 +14,7 @@ const api = axios.create({
 // JwtFilter accepts the Bearer header so no backend mock endpoint is needed.
 // Same pattern as HMS [HMS-frontend/src/utils/api.js:40] and pharmacy.
 const isMockAuth =
-    import.meta.env.VITE_DEV_MOCK_AUTH === "true" && import.meta.env.VITE_MOCK_JWT;
+    DEV_MOCK_AUTH && import.meta.env.VITE_MOCK_JWT;
 if (isMockAuth) {
     api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${import.meta.env.VITE_MOCK_JWT}`;
