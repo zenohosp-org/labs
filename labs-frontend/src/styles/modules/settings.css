@@ -71,3 +71,16 @@
     font-size: 12px;
     color: var(--hms-gray-500);
 }
+
+
+/* Lab Services — category filter.
+   Fixed-width so the control doesn't jitter as the trigger text changes
+   between "All categories", a single class name, and "7 categories";
+   flex-shrink:0 keeps the SearchBar beside it taking the slack instead. */
+.hms-lab-svc-catfilter {
+    width: 240px;
+    flex-shrink: 0;
+}
+@media (max-width: 640px) {
+    .hms-lab-svc-catfilter { width: 100%; }
+}

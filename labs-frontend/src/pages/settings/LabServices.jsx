@@ -6,7 +6,6 @@ import {
     MoreHorizontal,
     AlertTriangle,
     FlaskConical,
-    Filter,
     Trash2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -20,6 +19,7 @@ import {
     Input,
     Menu,
     Modal,
+    MultiSelect,
     PageHeader,
     Pagination,
     SearchBar,
@@ -129,7 +129,10 @@ export default function LabServices() {
     const [editorOpen, setEditorOpen] = useState(false);
     const [form, setForm] = useState(empty);
     const [confirmDelete, setConfirmDelete] = useState(null);
-    const [categoryFilter, setCategoryFilter] = useState("ALL");
+    // Empty array = no category filter. Multi-select: the LOINC 2.82 seed
+    // brings 31 LOINC classes on top of the app's own taxonomy, and real
+    // filtering questions are unions ("CHEM + HEM/BC"), not single picks.
+    const [categoryFilter, setCategoryFilter] = useState([]);
 
     const load = async () => {
         if (!user?.hospitalId) return;
@@ -149,13 +152,23 @@ export default function LabServices() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.hospitalId]);
 
-    const categories = useMemo(() => {
-        const set = new Set(rows.map((r) => r.category).filter(Boolean));
-        return ["ALL", ...Array.from(set).sort()];
+    /** Categories present in the data, each with its tally for the dropdown. */
+    const categoryOptions = useMemo(() => {
+        const counts = new Map();
+        for (const r of rows) {
+            if (!r.category) continue;
+            counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+        }
+        return [...counts.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([value, count]) => ({ value, label: value, count }));
     }, [rows]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
+        // Set lookup, not Array.includes: this runs per row over ~1900 rows on
+        // every keystroke, and includes() would make it O(rows × categories).
+        const cats = categoryFilter.length ? new Set(categoryFilter) : null;
         return rows.filter((r) => {
             const matchesSearch =
                 !q ||
@@ -163,7 +176,7 @@ export default function LabServices() {
                 r.testCode?.toLowerCase().includes(q) ||
                 r.loincCode?.toLowerCase().includes(q) ||
                 r.aliases?.toLowerCase().includes(q);
-            const matchesCat = categoryFilter === "ALL" || r.category === categoryFilter;
+            const matchesCat = !cats || cats.has(r.category);
             return matchesSearch && matchesCat;
         });
     }, [rows, search, categoryFilter]);
@@ -435,21 +448,24 @@ export default function LabServices() {
                             placeholder="Search by name, code, LOINC, alias…"
                         />
                     </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                        {categories.map((c) => (
-                            <button
-                                key={c}
-                                onClick={() => {
-                                    setCategoryFilter(c);
-                                    setPage(1);
-                                }}
-                                className={`hms-rad-priority-btn ${
-                                    categoryFilter === c ? "is-on" : ""
-                                }`}
-                            >
-                                <Filter className="w-3 h-3" /> {c}
-                            </button>
-                        ))}
+                    {/* Was a row of chips — one per category. Fine at 3
+                        taxonomies; the LOINC seed took it to 41 and it wrapped
+                        to four rows that pushed the table below the fold. A
+                        searchable multi-select holds the same choices in one
+                        control and adds the union filtering the chips couldn't
+                        express. */}
+                    <div className="hms-lab-svc-catfilter">
+                        <MultiSelect
+                            options={categoryOptions}
+                            value={categoryFilter}
+                            onChange={(next) => {
+                                setCategoryFilter(next);
+                                setPage(1);
+                            }}
+                            placeholder="All categories"
+                            searchPlaceholder="Search categories…"
+                            summaryNoun="categories"
+                        />
                     </div>
                 </div>
 
@@ -464,7 +480,7 @@ export default function LabServices() {
                                 <FlaskConical size={22} />
                             </span>
                             <div className="hms-cell-empty__text">
-                                {search || categoryFilter !== "ALL"
+                                {search || categoryFilter.length > 0
                                     ? "No tests match your filters."
                                     : "No tests configured yet."}
                             </div>

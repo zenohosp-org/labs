@@ -18,6 +18,7 @@ export { default as FormGroup } from "./FormGroup";
 export { default as Input } from "./Input";
 export { default as Menu } from "./Menu";
 export { default as Modal } from "./Modal";
+export { default as MultiSelect } from "./MultiSelect";
 export { default as PageHeader } from "./PageHeader";
 export { default as SearchBar } from "./SearchBar";
 export { default as Select } from "./Select";

@@ -1910,6 +1910,82 @@
     text-align: center;
 }
 
+/* --- MultiSelect — the multi-value sibling of SearchableSelect ---------
+   Inherits the .hms-select__* skin; only the multi-specific parts live
+   here. Keyboard focus is tracked on the list (.is-active) rather than
+   with real DOM focus, so the search input keeps the caret while ↑/↓
+   walk the options. */
+.hms-multiselect__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--hms-gray-100);
+    background: var(--hms-gray-50);
+}
+.hms-multiselect__toolbar button {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--hms-brand-primary, #1e293b);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.12s, opacity 0.12s;
+}
+.hms-multiselect__toolbar button:hover:not(:disabled) { background: var(--hms-gray-100); }
+.hms-multiselect__toolbar button:disabled { opacity: 0.4; cursor: default; }
+.hms-multiselect__toolbar-count {
+    font-size: 11px;
+    color: var(--hms-gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.hms-multiselect__option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+/* Hover and keyboard-active must look the same — the user shouldn't have to
+   know which input device put the highlight there. */
+.hms-multiselect__option.is-active { background: var(--hms-gray-50); }
+.hms-multiselect__option.is-selected.is-active { background: var(--hms-info-bg); }
+
+.hms-multiselect__check {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    border: 1.5px solid var(--hms-gray-300);
+    background: var(--hms-white);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--hms-white);
+    transition: background 0.12s, border-color 0.12s;
+}
+.hms-multiselect__check.is-on {
+    background: var(--hms-brand-primary, #1e293b);
+    border-color: var(--hms-brand-primary, #1e293b);
+}
+.hms-multiselect__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Row tallies — tabular so the column of numbers stays aligned while the
+   list scrolls. */
+.hms-multiselect__count {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--hms-gray-400);
+    font-variant-numeric: tabular-nums;
+}
+
 
 /* --- Async SearchSelect (label + typeahead + results list) --- */
 .hms-async-select {
