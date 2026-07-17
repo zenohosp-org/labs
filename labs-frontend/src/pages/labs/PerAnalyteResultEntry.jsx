@@ -1,27 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-    Plus,
-    Loader2,
-    Trash2,
-    ArrowDown,
-    ArrowUp,
-    AlertOctagon,
-    Check,
-} from "lucide-react";
+import { Plus, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { resultApi, labServiceApi, referenceRangeApi } from "@/api/labsClient";
 import { Alert, Button } from "@/components/ui";
-
-const FLAG_META = {
-    LL: { tone: "danger", icon: AlertOctagon, label: "PANIC LOW" },
-    L: { tone: "warning", icon: ArrowDown, label: "LOW" },
-    N: { tone: "success", icon: Check, label: "NORMAL" },
-    H: { tone: "warning", icon: ArrowUp, label: "HIGH" },
-    HH: { tone: "danger", icon: AlertOctagon, label: "PANIC HIGH" },
-    A: { tone: "warning", icon: AlertOctagon, label: "ABNORMAL" },
-    AA: { tone: "danger", icon: AlertOctagon, label: "CRIT. ABN." },
-};
+import { FLAG_META } from "@/utils/resultFlags";
 
 /**
  * Resolve which catalogue panel the per-analyte UI should expand for this order.

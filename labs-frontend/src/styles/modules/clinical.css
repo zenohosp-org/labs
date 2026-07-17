@@ -8845,3 +8845,136 @@ a.hms-rad-stat:hover,
     fill: #94a3b8;
 }
 
+
+
+/* ===================================================================
+   25. Lab report — per-analyte results table
+   -------------------------------------------------------------------
+   LabReportView is the pathology report clinicians actually read (and
+   the deep-link target from HMS Consultation View). A pathology report
+   is a results TABLE — analyte, value, unit, reference band, flag — not
+   the narrative prose that radiology uses.
+
+   Reuses .hms-analyte-flag from §  per-analyte entry on purpose: the
+   flag a tech sees while typing and the flag a clinician reads on the
+   report must be visually identical, or the two screens teach different
+   meanings for the same clinical signal.
+   =================================================================== */
+
+/* Status banners — preliminary / panic. Loud by design: an uncommitted or
+   critical result must never be mistaken for a settled normal one. */
+.hms-lab-rep-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin-bottom: 14px;
+}
+.hms-lab-rep-banner__title { font-weight: 700; }
+.hms-lab-rep-banner__body  { font-weight: 500; opacity: 0.9; }
+.hms-lab-rep-banner.is-danger  { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.hms-lab-rep-banner.is-warning { background: #fefce8; color: #92400e; border-color: #fde68a; }
+
+/* ── Results table ──────────────────────────────────────────────── */
+.hms-lab-rep-results {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    font-family: var(--hms-font-family);
+}
+.hms-lab-rep-results th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--hms-gray-500);
+    padding: 0 10px 7px 0;
+    border-bottom: 1.5px solid var(--hms-gray-300);
+    white-space: nowrap;
+}
+.hms-lab-rep-results td {
+    padding: 9px 10px 9px 0;
+    border-bottom: 1px solid var(--hms-gray-100);
+    vertical-align: top;
+}
+
+/* Analyte identity: name carries the weight, provenance sits quiet beneath.
+   The sub-line is what makes the report defensible (LOINC + method), but it
+   must never compete with the value for attention. */
+.hms-lab-rep-results__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hms-gray-900);
+    line-height: 1.35;
+}
+.hms-lab-rep-results__sub {
+    font-size: 10px;
+    color: var(--hms-gray-400);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+}
+
+/* The value is the single most-read cell — biggest, boldest, tabular so a
+   column of numbers aligns on the decimal and scans vertically. */
+.hms-lab-rep-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--hms-gray-900);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hms-lab-rep-val.is-warning { color: #92400e; }
+.hms-lab-rep-val.is-danger  { color: #991b1b; }
+
+.hms-lab-rep-unit {
+    font-size: 12px;
+    color: var(--hms-gray-500);
+    white-space: nowrap;
+}
+.hms-lab-rep-ref {
+    font-size: 12.5px;
+    color: var(--hms-gray-700);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hms-lab-rep-ref.is-none { color: var(--hms-gray-300); }
+
+/* Abnormal rows get a left accent so an eye scanning the page finds them
+   without reading a single number. */
+.hms-lab-rep-results tr.is-abnormal td:first-child { box-shadow: inset 2px 0 0 #fbbf24; padding-left: 8px; }
+.hms-lab-rep-results tr.is-panic    td:first-child { box-shadow: inset 2px 0 0 #dc2626; padding-left: 8px; }
+.hms-lab-rep-results tr.is-panic td { background: #fffafa; }
+
+/* Empty state — says which of the two reasons applies, so the tech knows
+   whether to enter results or whether this order is narrative-only. */
+.hms-lab-rep-empty {
+    padding: 18px;
+    border: 1px dashed var(--hms-gray-200);
+    border-radius: 8px;
+    text-align: center;
+    color: var(--hms-gray-500);
+    font-size: 12.5px;
+    margin-bottom: 16px;
+}
+
+/* ── Print ──────────────────────────────────────────────────────────
+   Reports get printed and handed to patients. Repeat the header on page
+   breaks, never split a row across pages, and force the flag/banner tints
+   to survive the browser's "economy" colour stripping — a PANIC HIGH that
+   prints as plain grey text is a safety regression. */
+@media print {
+    .hms-lab-rep-results { page-break-inside: auto; }
+    .hms-lab-rep-results thead { display: table-header-group; }
+    .hms-lab-rep-results tr { page-break-inside: avoid; page-break-after: auto; }
+    .hms-lab-rep-banner,
+    .hms-lab-rep-results tr.is-panic td,
+    .hms-analyte-flag {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
