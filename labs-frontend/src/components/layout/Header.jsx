@@ -1,5 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { Menu, Bell, LogOut, HelpCircle } from "lucide-react";
+import CheckInWidget from "./CheckInWidget";
 
 /**
  * Top navigation. 1:1 visual match with HMS Header.jsx — same {@code zu-topnav}
@@ -23,6 +24,7 @@ function Header({ onMenuClick }) {
             )}
             <span className="zu-topnav-title">Laboratory Information System</span>
             <div className="zu-topnav-right">
+                <CheckInWidget />
                 {/* Help slot mirrors HMS's ProductTour trigger — placeholder
                     until labs grows its own tour. */}
                 <button className="zu-topnav-bell" aria-label="Help" title="Help">
