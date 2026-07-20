@@ -4,7 +4,9 @@ import com.labs.server.dto.CreateLabServiceRequest;
 import com.labs.server.dto.LabServiceDTO;
 import com.labs.server.entity.LabReferenceRange;
 import com.labs.server.entity.LabService;
+import com.labs.server.entity.LabServiceCatalog;
 import com.labs.server.repository.LabReferenceRangeRepository;
+import com.labs.server.repository.LabServiceCatalogRepository;
 import com.labs.server.repository.LabServiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 public class LabCatalogService {
 
     private final LabServiceRepository repository;
+    private final LabServiceCatalogRepository catalogRepository;   // V20 — global LOINC master
     private final LabReferenceRangeRepository rangeRepository;
     private final LabServiceSeeder seeder;          // separate bean — proxy applies, REQUIRES_NEW writable tx
     private final RadiologyServiceSeeder radiologySeeder;  // V14 — gated by labs.seed.radiology.*
@@ -70,6 +73,40 @@ public class LabCatalogService {
         int cappedLimit = Math.min(Math.max(limit, 1), 50);
         return repository.searchByHospital(hospitalId, q.trim(), PageRequest.of(0, cappedLimit))
                 .stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * Phase 11 — search the GLOBAL LOINC master catalog (lab_service_catalog),
+     * hospital-agnostic. Backs the "Add from catalog" picker: the admin finds a
+     * term here, and the picked row seeds a new hospital-scoped {@link LabService}
+     * through the normal {@link #upsert} path.
+     *
+     * Returns {@link LabServiceDTO} (not the catalog entity) so the frontend can
+     * feed a pick straight into the existing editor form — same shape it already
+     * maps in openEdit. Hospital-owned fields (price, active, hospitalId) come
+     * back null and are filled in by the admin before saving.
+     */
+    public List<LabServiceDTO> searchCatalog(String q, int limit) {
+        if (q == null || q.isBlank()) return List.of();
+        int cappedLimit = Math.min(Math.max(limit, 1), 50);
+        return catalogRepository.search(q.trim(), cappedLimit)
+                .stream().map(this::catalogToDTO).collect(Collectors.toList());
+    }
+
+    private LabServiceDTO catalogToDTO(LabServiceCatalog c) {
+        return LabServiceDTO.builder()
+                .testCode(c.getTestCode())
+                .loincCode(c.getLoincCode())
+                .name(c.getName())
+                .aliases(c.getAliases())
+                .category(c.getCategory())
+                .discipline(c.getDiscipline())
+                .specimenKind(c.getSpecimenKind())
+                .defaultMethod(c.getDefaultMethod())
+                .defaultUnit(c.getDefaultUnit())
+                .valueType(c.getValueType())
+                .isPanel(c.getIsPanel())
+                .build();
     }
 
     /**

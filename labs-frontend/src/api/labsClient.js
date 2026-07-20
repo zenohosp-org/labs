@@ -442,6 +442,18 @@ export const labServiceApi = {
         const { data } = await api.get("/api/lab-services/search", { params });
         return data;
     },
+    /**
+     * Phase 11 — search the GLOBAL LOINC master catalog (hospital-agnostic).
+     * Backs the "Add from catalog" picker; the picked row seeds the editor form
+     * and is created for this hospital via upsert(). Not hospital-scoped.
+     */
+    catalogSearch: async (q, { limit = 20 } = {}) => {
+        if (!q || !q.trim()) return [];
+        const { data } = await api.get("/api/lab-services/catalog", {
+            params: { q, limit },
+        });
+        return data;
+    },
     /** Phase 3 — ranges that belong to a specific test row. */
     rangesFor: async (testId) => {
         const { data } = await api.get(`/api/lab-services/${testId}/ranges`);

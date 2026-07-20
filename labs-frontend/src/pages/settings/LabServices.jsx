@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     Plus,
+    Search,
     Edit2,
     Power,
     MoreHorizontal,
@@ -11,6 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { labServiceApi } from "@/api/labsClient";
+import CatalogPicker from "@/components/CatalogPicker";
 import {
     Alert,
     Badge,
@@ -127,6 +129,7 @@ export default function LabServices() {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [editorOpen, setEditorOpen] = useState(false);
+    const [catalogOpen, setCatalogOpen] = useState(false);
     const [form, setForm] = useState(empty);
     const [confirmDelete, setConfirmDelete] = useState(null);
     // Empty array = no category filter. Multi-select: the LOINC 2.82 seed
@@ -184,8 +187,39 @@ export default function LabServices() {
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
+    // Codes this hospital already offers — so the catalog picker can flag a
+    // duplicate rather than silently editing it via the testCode-keyed upsert.
+    const existingCodes = useMemo(
+        () => new Set(rows.flatMap((r) => [r.testCode, r.loincCode].filter(Boolean))),
+        [rows]
+    );
+
     const openNew = () => {
         setForm(empty);
+        setEditorOpen(true);
+    };
+
+    // Seed the editor from a picked master-catalog row and open it, so the admin
+    // sets hospital-specific price/GST/display before saving. id:null → the
+    // existing save()→upsert path creates a new hospital-scoped row (keyed on
+    // testCode); active defaults true because picking a test means offering it.
+    const addFromCatalog = (row) => {
+        setForm({
+            ...empty,
+            testCode: row.testCode ?? row.loincCode ?? "",
+            loincCode: row.loincCode ?? "",
+            name: row.name ?? "",
+            aliases: row.aliases ?? "",
+            category: row.category ?? "",
+            discipline: row.discipline ?? "PATHOLOGY",
+            specimenKind: row.specimenKind ?? "",
+            defaultMethod: row.defaultMethod ?? "",
+            defaultUnit: row.defaultUnit ?? "",
+            valueType: row.valueType ?? "NUMERIC",
+            isPanel: !!row.isPanel,
+            active: true,
+        });
+        setCatalogOpen(false);
         setEditorOpen(true);
     };
     const openEdit = (r) => {
@@ -425,9 +459,14 @@ export default function LabServices() {
             <PageHeader
                 title={titleNode}
                 actions={
-                    <Button variant="primary" onClick={openNew}>
-                        <Plus size={14} strokeWidth={2.4} /> New test
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="primary" onClick={() => setCatalogOpen(true)}>
+                            <Search size={14} strokeWidth={2.4} /> Add from catalog
+                        </Button>
+                        <Button variant="secondary" onClick={openNew}>
+                            <Plus size={14} strokeWidth={2.4} /> New test
+                        </Button>
+                    </div>
                 }
             />
 
@@ -500,6 +539,15 @@ export default function LabServices() {
                     </div>
                 )}
             </div>
+
+            <Modal
+                isOpen={catalogOpen}
+                onClose={() => setCatalogOpen(false)}
+                size="lg"
+                title="Add a test from the LOINC catalog"
+            >
+                <CatalogPicker onPick={addFromCatalog} excludeCodes={existingCodes} />
+            </Modal>
 
             <Modal
                 isOpen={editorOpen}

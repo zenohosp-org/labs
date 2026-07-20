@@ -61,6 +61,19 @@ public class LabServiceController {
         return ResponseEntity.ok(service.search(resolveHospitalId(auth, hospitalId), q, limit));
     }
 
+    /**
+     * Phase 11 — search the GLOBAL LOINC master catalog (not this hospital's
+     * services). Backs the "Add from catalog" picker in Settings → Lab Services.
+     * No hospital scoping: the catalog is shared. The picked row is then created
+     * as a hospital-scoped service via POST (upsert) below.
+     */
+    @GetMapping("/catalog")
+    public ResponseEntity<List<LabServiceDTO>> catalog(
+            @RequestParam String q,
+            @RequestParam(required = false, defaultValue = "20") int limit) {
+        return ResponseEntity.ok(service.searchCatalog(q, limit));
+    }
+
     /** Phase 3 — ranges that belong to a specific catalogue row. */
     @GetMapping("/{id}/ranges")
     public ResponseEntity<List<com.labs.server.entity.LabReferenceRange>> ranges(

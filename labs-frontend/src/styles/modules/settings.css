@@ -84,3 +84,103 @@
 @media (max-width: 640px) {
     .hms-lab-svc-catfilter { width: 100%; }
 }
+
+
+/* Lab Services → "Add from catalog" picker (CatalogPicker in a Modal).
+   Searches the 60k LOINC master; the list scrolls inside the modal so the
+   search box stays pinned while results page under it. */
+.hms-catpick { display: flex; flex-direction: column; gap: 10px; }
+.hms-catpick__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 42px;
+    border: 1.5px solid var(--hms-gray-200);
+    border-radius: 8px;
+    background: var(--hms-white);
+}
+.hms-catpick__search:focus-within {
+    border-color: var(--hms-brand-primary, #1e293b);
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+.hms-catpick__input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-family: var(--hms-font-family);
+    color: var(--hms-gray-900);
+}
+.hms-catpick__input::placeholder { color: var(--hms-gray-400); }
+
+.hms-catpick__results {
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid var(--hms-gray-100);
+    border-radius: 8px;
+}
+.hms-catpick__hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 16px;
+    color: var(--hms-gray-500);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Result row — name leads, provenance (class / specimen / LOINC) sits quiet
+   beneath so the picker reads like the report table. Active (hover/keyboard)
+   share one highlight so pointer and arrow-keys look identical. */
+.hms-catpick__row {
+    width: 100%;
+    display: block;
+    text-align: left;
+    padding: 9px 14px;
+    border: none;
+    border-bottom: 1px solid var(--hms-gray-100);
+    background: var(--hms-white);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.hms-catpick__row:last-child { border-bottom: none; }
+.hms-catpick__row.is-active { background: var(--hms-gray-50); }
+.hms-catpick__row.is-dup { cursor: default; opacity: 0.55; }
+.hms-catpick__row.is-dup.is-active { background: var(--hms-white); }
+
+.hms-catpick__row-main { display: flex; align-items: center; gap: 8px; }
+.hms-catpick__name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--hms-gray-900);
+    line-height: 1.35;
+}
+.hms-catpick__panel {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: var(--hms-info-bg);
+    color: var(--hms-info);
+}
+.hms-catpick__added {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--hms-gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-left: auto;
+}
+.hms-catpick__row-sub {
+    margin-top: 2px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--hms-gray-500);
+    font-variant-numeric: tabular-nums;
+}
