@@ -91,19 +91,29 @@ public class LabService {
         return orderRepository.countByHospitalIdAndStatusIn(hospitalId, COMPLETED_STATUSES);
     }
 
-    public List<LabOrderDTO> getByPatient(Integer patientId) {
-        return orderRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
+    public List<LabOrderDTO> getByPatient(Integer patientId, UUID hospitalId) {
+        return orderRepository.findByPatientIdAndHospitalIdOrderByCreatedAtDesc(patientId, hospitalId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    public List<LabOrderDTO> getByAdmission(UUID admissionId) {
-        return orderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId)
+    public List<LabOrderDTO> getByAdmission(UUID admissionId, UUID hospitalId) {
+        return orderRepository.findByAdmissionIdAndHospitalIdOrderByCreatedAtDesc(admissionId, hospitalId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    public LabOrderDTO getOrder(Long id) {
-        return toDTO(orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lab order not found")));
+    public LabOrderDTO getOrder(Long id, UUID hospitalId) {
+        return toDTO(requireOrder(id, hospitalId));
+    }
+
+    /**
+     * Tenant-scoped fetch used by every by-id operation. Returns the order only
+     * if it belongs to the caller's hospital (from their JWT); otherwise throws
+     * the same "not found" as a non-existent id, so cross-tenant ids cannot be
+     * probed. This is the single choke point that closes the cross-tenant IDOR.
+     */
+    private LabOrder requireOrder(Long id, UUID hospitalId) {
+        return orderRepository.findByIdAndHospitalId(id, hospitalId)
+                .orElseThrow(() -> new RuntimeException("Lab order not found"));
     }
 
     public long countByStatus(UUID hospitalId, String status) {
@@ -208,22 +218,21 @@ public class LabService {
      * existing IPD lab-orders semantics ("Only PENDING orders can be cancelled").
      */
     @Transactional
-    public void cancel(Long id) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public void cancel(Long id, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != LabStatus.PENDING_COLLECTION) {
             throw new RuntimeException("Only PENDING_COLLECTION orders can be cancelled");
         }
-        UUID hospitalId = order.getHospital() != null ? order.getHospital().getId() : null;
+        // hospitalId (from the caller's JWT) == order.getHospital().getId(),
+        // guaranteed by requireOrder — use it directly for the audit stamp.
         orderRepository.delete(order);
         auditService.record("LabOrder", String.valueOf(id), "DELETE",
                 hospitalId, order, null);
     }
 
     @Transactional
-    public LabOrderDTO markCollected(Long id) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO markCollected(Long id, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != LabStatus.PENDING_COLLECTION) {
             throw new RuntimeException("Order is not in PENDING_COLLECTION state");
         }
@@ -265,9 +274,8 @@ public class LabService {
      * not a status transition.
      */
     @Transactional
-    public LabOrderDTO markReceived(Long id) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO markReceived(Long id, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != LabStatus.AWAITING_REPORT) {
             throw new RuntimeException("Order is not in AWAITING_REPORT state");
         }
@@ -294,9 +302,8 @@ public class LabService {
      * (analyser run started). New HIPAA-grade timestamp + actor stamp.
      */
     @Transactional
-    public LabOrderDTO markStarted(Long id) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO markStarted(Long id, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != LabStatus.AWAITING_REPORT) {
             throw new RuntimeException("Order is not in AWAITING_REPORT state — current: " + order.getStatus());
         }
@@ -328,9 +335,8 @@ public class LabService {
      * Auto-bills on success, same seam as generateReport.
      */
     @Transactional
-    public LabOrderDTO markCompleted(Long id) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO markCompleted(Long id, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != LabStatus.IN_PROGRESS) {
             throw new RuntimeException(
                     "Order is not in IN_PROGRESS state — current: " + order.getStatus());
@@ -374,9 +380,8 @@ public class LabService {
      * with the cancellation actor + timestamp + optional reason for HIPAA history.
      */
     @Transactional
-    public LabOrderDTO cancelOrder(Long id, String reason) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO cancelOrder(Long id, String reason, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         LabStatus cur = order.getStatus();
         if (cur != LabStatus.PENDING_COLLECTION
                 && cur != LabStatus.AWAITING_REPORT
@@ -404,9 +409,8 @@ public class LabService {
     }
 
     @Transactional
-    public LabOrderDTO generateReport(Long id, LabReportRequest req) {
-        LabOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public LabOrderDTO generateReport(Long id, LabReportRequest req, UUID hospitalId) {
+        LabOrder order = requireOrder(id, hospitalId);
         // Phase 7 — accept either AWAITING_REPORT (legacy direct-report flow)
         // or IN_PROGRESS (new lifecycle, tech ran the analyser first).
         if (order.getStatus() != LabStatus.AWAITING_REPORT

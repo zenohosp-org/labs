@@ -17,6 +17,12 @@ import java.util.UUID;
 /**
  * Mirror of HMS RadiologyController. Routes use {@code /api/lab} so
  * frontend bindings stay 1:1 with the radiology API surface.
+ *
+ * Tenant scoping: the caller's hospital ALWAYS comes from their signed JWT
+ * (resolveHospitalId), never from a path/query/body value — those are
+ * attacker-controlled. Every by-id and by-patient/admission call is scoped to
+ * that hospital in the service, so one tenant can't read or mutate another
+ * tenant's lab orders by enumerating BIGSERIAL ids.
  */
 @RestController
 @RequestMapping("/api/lab")
@@ -28,28 +34,29 @@ public class LabController {
 
     @GetMapping
     public ResponseEntity<List<LabOrderDTO>> getOrders(
-            @RequestParam UUID hospitalId,
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(labService.getOrders(hospitalId, status));
+            @RequestParam(required = false) String status,
+            Authentication auth) {
+        return ResponseEntity.ok(labService.getOrders(resolveHospitalId(auth), status));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<LabOrderDTO> getOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(labService.getOrder(id));
+    public ResponseEntity<LabOrderDTO> getOrder(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(labService.getOrder(id, resolveHospitalId(auth)));
     }
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<LabOrderDTO>> getByPatient(@PathVariable Integer patientId) {
-        return ResponseEntity.ok(labService.getByPatient(patientId));
+    public ResponseEntity<List<LabOrderDTO>> getByPatient(@PathVariable Integer patientId, Authentication auth) {
+        return ResponseEntity.ok(labService.getByPatient(patientId, resolveHospitalId(auth)));
     }
 
     @GetMapping("/admission/{admissionId}")
-    public ResponseEntity<List<LabOrderDTO>> getByAdmission(@PathVariable UUID admissionId) {
-        return ResponseEntity.ok(labService.getByAdmission(admissionId));
+    public ResponseEntity<List<LabOrderDTO>> getByAdmission(@PathVariable UUID admissionId, Authentication auth) {
+        return ResponseEntity.ok(labService.getByAdmission(admissionId, resolveHospitalId(auth)));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Long>> getStats(@RequestParam UUID hospitalId) {
+    public ResponseEntity<Map<String, Long>> getStats(Authentication auth) {
+        UUID hospitalId = resolveHospitalId(auth);
         return ResponseEntity.ok(Map.of(
                 "pendingCollection", labService.countByStatus(hospitalId, "PENDING_COLLECTION"),
                 "awaitingReport",    labService.countByStatus(hospitalId, "AWAITING_REPORT"),
@@ -65,8 +72,8 @@ public class LabController {
     }
 
     @PatchMapping("/{id}/collect")
-    public ResponseEntity<LabOrderDTO> markCollected(@PathVariable Long id) {
-        return ResponseEntity.ok(labService.markCollected(id));
+    public ResponseEntity<LabOrderDTO> markCollected(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(labService.markCollected(id, resolveHospitalId(auth)));
     }
 
     /**
@@ -74,8 +81,8 @@ public class LabController {
      * Stamps received_at + actor; status stays AWAITING_REPORT.
      */
     @PatchMapping("/{id}/receive")
-    public ResponseEntity<LabOrderDTO> markReceived(@PathVariable Long id) {
-        return ResponseEntity.ok(labService.markReceived(id));
+    public ResponseEntity<LabOrderDTO> markReceived(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(labService.markReceived(id, resolveHospitalId(auth)));
     }
 
     /**
@@ -83,15 +90,16 @@ public class LabController {
      * AWAITING_REPORT → IN_PROGRESS, stamps started_at + actor.
      */
     @PatchMapping("/{id}/start")
-    public ResponseEntity<LabOrderDTO> markStarted(@PathVariable Long id) {
-        return ResponseEntity.ok(labService.markStarted(id));
+    public ResponseEntity<LabOrderDTO> markStarted(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(labService.markStarted(id, resolveHospitalId(auth)));
     }
 
     @PatchMapping("/{id}/report")
     public ResponseEntity<LabOrderDTO> generateReport(
             @PathVariable Long id,
-            @RequestBody LabReportRequest request) {
-        return ResponseEntity.ok(labService.generateReport(id, request));
+            @RequestBody LabReportRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(labService.generateReport(id, request, resolveHospitalId(auth)));
     }
 
     /**
@@ -99,8 +107,8 @@ public class LabController {
      * report data presence (findings text OR at least one analyte result).
      */
     @PatchMapping("/{id}/complete")
-    public ResponseEntity<LabOrderDTO> markCompleted(@PathVariable Long id) {
-        return ResponseEntity.ok(labService.markCompleted(id));
+    public ResponseEntity<LabOrderDTO> markCompleted(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(labService.markCompleted(id, resolveHospitalId(auth)));
     }
 
     /**
@@ -110,9 +118,10 @@ public class LabController {
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<LabOrderDTO> cancelOrder(
             @PathVariable Long id,
-            @RequestBody(required = false) java.util.Map<String, String> body) {
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication auth) {
         String reason = body != null ? body.get("reason") : null;
-        return ResponseEntity.ok(labService.cancelOrder(id, reason));
+        return ResponseEntity.ok(labService.cancelOrder(id, reason, resolveHospitalId(auth)));
     }
 
     /**
@@ -121,8 +130,8 @@ public class LabController {
      * endpoint retained for back-compat with HMS's existing IPD cancel button.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancel(@PathVariable Long id) {
-        labService.cancel(id);
+    public ResponseEntity<Void> cancel(@PathVariable Long id, Authentication auth) {
+        labService.cancel(id, resolveHospitalId(auth));
         return ResponseEntity.noContent().build();
     }
 
@@ -135,5 +144,21 @@ public class LabController {
         } catch (Exception e) {
             return auth.getName();
         }
+    }
+
+    /**
+     * The caller's hospital scope, taken from their validated JWT. Fails closed:
+     * a request with no auth or no hospital claim is rejected rather than being
+     * allowed to fall through to an unscoped query.
+     */
+    private UUID resolveHospitalId(Authentication auth) {
+        if (auth == null || auth.getCredentials() == null) {
+            throw new RuntimeException("Unauthenticated");
+        }
+        UUID hospitalId = jwtUtil.getHospitalId((String) auth.getCredentials());
+        if (hospitalId == null) {
+            throw new RuntimeException("Token carries no hospital scope");
+        }
+        return hospitalId;
     }
 }
