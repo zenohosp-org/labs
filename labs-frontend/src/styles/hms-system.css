@@ -2539,3 +2539,36 @@
     padding: 0;
 }
 .hms-toast__dismiss:hover { opacity: 1; }
+
+/* Product-tour popover — matches the HMS driver.js tour look */
+.driver-popover.zu-driver-popover {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    font-family: inherit;
+    color: #1e293b;
+}
+.driver-popover.zu-driver-popover .driver-popover-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #0f172a;
+}
+.driver-popover.zu-driver-popover .driver-popover-description {
+    font-size: 13px; line-height: 1.5; color: #475569; margin-bottom: 16px;
+}
+.driver-popover.zu-driver-popover .driver-popover-footer button {
+    background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500; color: #334155;
+    cursor: pointer; text-shadow: none; box-shadow: none; transition: all 0.2s;
+}
+.driver-popover.zu-driver-popover .driver-popover-footer button:hover {
+    background: #f8fafc; border-color: #94a3b8;
+}
+.driver-popover.zu-driver-popover .driver-popover-footer .driver-popover-next-btn {
+    background: #2563eb; color: #fff; border-color: #2563eb;
+}
+.driver-popover.zu-driver-popover .driver-popover-footer .driver-popover-next-btn:hover {
+    background: #1d4ed8; border-color: #1d4ed8;
+}
+.driver-popover.zu-driver-popover .driver-popover-close-btn { top: 12px; right: 12px; color: #94a3b8; }
+.driver-popover.zu-driver-popover .driver-popover-close-btn:hover { color: #475569; }

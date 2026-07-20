@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import ProductTour from "./ProductTour";
 
 /**
  * App shell. Identical to the HMS Layout — mirrors the {@code zu-app-shell}
@@ -18,6 +19,7 @@ function Layout() {
 
     return (
         <div className="zu-app-shell">
+            <ProductTour />
             <div className="no-print">
                 <Sidebar isOpen={sidebarOpen} />
             </div>

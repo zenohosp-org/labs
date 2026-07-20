@@ -19,12 +19,12 @@ import {
     Beaker,
 } from "lucide-react";
 
-const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home };
+const DASHBOARD_LINK = { label: "Dashboard", to: "/labs/dashboard", icon: Home, tour: "dashboard" };
 
 const PATHOLOGY_LINKS = [
-    { label: "Collection", to: "/lab/collection", icon: Beaker },
-    { label: "Lab Queue", to: "/lab/queue", icon: TestTube },
-    { label: "Reports", to: "/lab/reports", icon: FileText },
+    { label: "Collection", to: "/lab/collection", icon: Beaker, tour: "collection" },
+    { label: "Lab Queue", to: "/lab/queue", icon: TestTube, tour: "lab-queue" },
+    { label: "Reports", to: "/lab/reports", icon: FileText, tour: "reports" },
 ];
 
 const RADIOLOGY_LINKS = [
@@ -83,6 +83,7 @@ function Sidebar({ isOpen }) {
                 key={link.to}
                 to={link.to}
                 end
+                data-tour={link.tour}
                 className={({ isActive }) => `${baseCls}${isActive ? " is-active" : ""}`}
             >
                 {!indent && <Icon className="hms-sidebar__link-icon" />}
@@ -94,6 +95,7 @@ function Sidebar({ isOpen }) {
                 to={link.to}
                 end
                 title={link.label}
+                data-tour={link.tour}
                 className={({ isActive }) => `${baseCls}${isActive ? " is-active" : ""}`}
             >
                 <Icon className="hms-sidebar__link-icon" />
@@ -116,11 +118,12 @@ function Sidebar({ isOpen }) {
         );
     };
 
-    const renderAccordionSection = (links, label, AccIcon, open, setOpen, active) => {
+    const renderAccordionSection = (links, label, AccIcon, open, setOpen, active, id) => {
         if (!isOpen) return links.map((link) => renderLink(link));
         return (
             <div>
                 <button
+                    id={id}
                     onClick={() => setOpen((o) => !o)}
                     className={`hms-sidebar__acc-btn${active ? " is-active" : ""}`}
                 >
@@ -156,7 +159,7 @@ function Sidebar({ isOpen }) {
                 {renderLink(DASHBOARD_LINK)}
 
                 {isOpen && <div className="hms-sidebar__section-label is-spaced">Diagnostics</div>}
-                {renderAccordionSection(PATHOLOGY_LINKS, "Pathology", TestTube, pathOpen, setPathOpen, pathActive)}
+                {renderAccordionSection(PATHOLOGY_LINKS, "Pathology", TestTube, pathOpen, setPathOpen, pathActive, "tour-pathology-accordion")}
                 {renderAccordionSection(RADIOLOGY_LINKS, "Radiology", ScanLine, radOpen, setRadOpen, radActive)}
                 {renderAccordionSection(CHECKUP_LINKS, "Health Checkups", HeartPulse, checkupOpen, setCheckupOpen, checkupActive)}
                 {renderAccordionSection(PACKAGE_LINKS, "Packages", FlaskConical, packagesOpen, setPackagesOpen, packagesActive)}
