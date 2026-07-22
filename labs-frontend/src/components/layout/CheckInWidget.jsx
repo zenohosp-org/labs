@@ -6,10 +6,6 @@ const DIRECTORY_API_URL = import.meta.env?.VITE_DIRECTORY_API_URL || 'https://ap
 
 const getAttendanceStatus = () =>
     axios.get(`${DIRECTORY_API_URL}/api/attendance/status`, { withCredentials: true });
-const attendanceCheckIn = (mode) =>
-    axios.post(`${DIRECTORY_API_URL}/api/attendance/check-in`, mode ? { mode } : {}, { withCredentials: true });
-const attendanceCheckOut = () =>
-    axios.post(`${DIRECTORY_API_URL}/api/attendance/check-out`, {}, { withCredentials: true });
 
 const LaptopIcon = ({ className }) => (
     <svg className={className} width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -20,35 +16,33 @@ const LaptopIcon = ({ className }) => (
 );
 
 /**
- * Suite-wide Remote Work check-in toggle (top bar). State lives in Directory
- * and is shared by every ZenoHosp app via the SSO cookie, so the checked-in
- * state stays consistent wherever the user is.
+ * Suite-wide attendance display (top bar) — read-only.
  *
- * The timer shows TODAY'S ACCUMULATED total as HH:MM:SS — it ticks every
- * second while checked in and, after a check-out/in cycle, resumes from the
- * day's total (Directory sums all of today's sessions into todaySeconds).
+ * Attendance has exactly one writer: the biometric device, which reports into
+ * People and is mirrored onto Directory's session record. This widget shows
+ * that record and never changes it. There is deliberately no toggle — a browser
+ * button was a second write path that disagreed with the device, and no amount
+ * of syncing made two sources of truth agree.
  *
- * Directory being unreachable must never block the app: a failed poll hides
- * the widget rather than erroring.
+ * Renders nothing when Directory is unreachable, or when the hospital has no
+ * People/HR app (`attendanceEnabled: false`) and therefore no device ingestion:
+ * a permanent 00:00:00 reads as broken rather than not-purchased.
  */
 export default function CheckInWidget() {
-    const [status, setStatus] = useState(null); // { checkedIn, checkInAt, todaySeconds, todayMinutes }
-    const [busy, setBusy] = useState(false);
+    const [status, setStatus] = useState(null); // { checkedIn, checkInAt, checkOutAt, todaySeconds, attendanceEnabled }
     // 1s ticker so the seconds counter re-renders while checked in.
     const [, setTick] = useState(0);
     // When the status snapshot was taken — live counter = snapshot + elapsed.
     const fetchedAtRef = useRef(Date.now());
 
-    const applyStatus = useCallback((data) => {
-        fetchedAtRef.current = Date.now();
-        setStatus(data);
-    }, []);
-
     const refresh = useCallback(() => {
         getAttendanceStatus()
-            .then((res) => applyStatus(res.data?.data ?? res.data))
+            .then((res) => {
+                fetchedAtRef.current = Date.now();
+                setStatus(res.data?.data ?? res.data);
+            })
             .catch(() => setStatus(null)); // Directory unreachable — hide, never block the app
-    }, [applyStatus]);
+    }, []);
 
     useEffect(() => {
         refresh();
@@ -62,7 +56,8 @@ export default function CheckInWidget() {
         return () => clearInterval(t);
     }, [status?.checkedIn]);
 
-    if (status === null) return null; // no state yet (or Directory down) — render nothing
+    if (status === null) return null;            // no state yet, or Directory down
+    if (status.attendanceEnabled === false) return null; // hospital has no device attendance
 
     // Today's running total in seconds: server snapshot + live elapsed while in.
     const baseSeconds = status.todaySeconds ?? (status.todayMinutes ?? 0) * 60;
@@ -72,40 +67,28 @@ export default function CheckInWidget() {
     const hh = String(Math.floor(liveSeconds / 3600)).padStart(2, '0');
     const mm = String(Math.floor((liveSeconds % 3600) / 60)).padStart(2, '0');
     const ss = String(liveSeconds % 60).padStart(2, '0');
-    const label = `${hh}:${mm}:${ss}`;
-    const tooltip = status.checkedIn
-        ? `Checked in — ${label} worked today`
-        : `Checked out — ${label} worked today. Toggle to check in.`;
+    const elapsed = `${hh}:${mm}:${ss}`;
 
-    const toggle = async () => {
-        if (busy) return;
-        if (status.checkedIn && !window.confirm(`Check out? You've logged ${label} today.`)) return;
-        setBusy(true);
-        try {
-            const res = status.checkedIn ? await attendanceCheckOut() : await attendanceCheckIn('REMOTE');
-            applyStatus(res.data?.data ?? res.data);
-        } catch {
-            refresh(); // converge on server truth rather than guessing
-        } finally {
-            setBusy(false);
-        }
+    const state = status.checkedIn
+        ? 'Checked in'
+        : liveSeconds > 0
+            ? 'Checked out'
+            : 'Not checked in';
+
+    const punchTime = (iso) => {
+        if (!iso) return null;
+        const d = new Date(iso);
+        return Number.isNaN(d.getTime())
+            ? null
+            : d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     };
+    const at = status.checkedIn ? punchTime(status.checkInAt) : punchTime(status.checkOutAt);
+    const tooltip = `${state}${at ? ` at ${at}` : ''} — ${elapsed} today. Recorded by the biometric device.`;
 
     return (
         <div className="checkin-widget is-topbar" title={tooltip}>
             <LaptopIcon className={`checkin-icon${status.checkedIn ? ' is-in' : ''}`} />
-            <span className="checkin-label">{label}</span>
-            <button
-                type="button"
-                role="switch"
-                aria-checked={status.checkedIn}
-                aria-label={status.checkedIn ? 'Check out' : 'Check in'}
-                className={`checkin-toggle${status.checkedIn ? ' is-on' : ''}`}
-                onClick={toggle}
-                disabled={busy}
-            >
-                <span className="checkin-knob" />
-            </button>
+            <span className="checkin-label">{elapsed} · {state}</span>
         </div>
     );
 }
