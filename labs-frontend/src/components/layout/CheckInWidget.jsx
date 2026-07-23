@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './CheckInWidget.css';
 
@@ -30,15 +30,17 @@ const LaptopIcon = ({ className }) => (
  */
 export default function CheckInWidget() {
     const [status, setStatus] = useState(null); // { checkedIn, checkInAt, checkOutAt, todaySeconds, attendanceEnabled }
-    // 1s ticker so the seconds counter re-renders while checked in.
-    const [, setTick] = useState(0);
-    // When the status snapshot was taken — live counter = snapshot + elapsed.
-    const fetchedAtRef = useRef(Date.now());
+    // Live clock + snapshot time, both in state so render stays pure — no
+    // Date.now()/ref reads during render (react-hooks/purity, react-hooks/refs).
+    const [now, setNow] = useState(0);
+    const [fetchedAt, setFetchedAt] = useState(0);
 
     const refresh = useCallback(() => {
         getAttendanceStatus()
             .then((res) => {
-                fetchedAtRef.current = Date.now();
+                const t = Date.now();
+                setFetchedAt(t);
+                setNow(t);
                 setStatus(res.data?.data ?? res.data);
             })
             .catch(() => setStatus(null)); // Directory unreachable — hide, never block the app
@@ -52,7 +54,7 @@ export default function CheckInWidget() {
 
     useEffect(() => {
         if (!status?.checkedIn) return;
-        const t = setInterval(() => setTick((n) => n + 1), 1000);
+        const t = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(t);
     }, [status?.checkedIn]);
 
@@ -62,7 +64,7 @@ export default function CheckInWidget() {
     // Today's running total in seconds: server snapshot + live elapsed while in.
     const baseSeconds = status.todaySeconds ?? (status.todayMinutes ?? 0) * 60;
     const liveSeconds = status.checkedIn
-        ? baseSeconds + Math.max(0, Math.floor((Date.now() - fetchedAtRef.current) / 1000))
+        ? baseSeconds + Math.max(0, Math.floor((now - fetchedAt) / 1000))
         : baseSeconds;
     const hh = String(Math.floor(liveSeconds / 3600)).padStart(2, '0');
     const mm = String(Math.floor((liveSeconds % 3600) / 60)).padStart(2, '0');
