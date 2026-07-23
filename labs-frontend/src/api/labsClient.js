@@ -200,6 +200,17 @@ export const hospitalServiceApi = {
     },
 };
 
+// ── Equipment (proxied read-only to asset-manager) ─────
+// Powers the "equipment used" picker on result entry. asset-manager resolves
+// hospitalId from the JWT itself and returns that hospital's non-disposed
+// assets — no client param needed.
+export const equipmentApi = {
+    list: async () => {
+        const { data } = await api.get("/api/equipment");
+        return data;
+    },
+};
+
 // ── Billing (proxied to HMS) ───────────────────────────
 // Bank accounts list + payment collection. HMS owns the invoice lifecycle;
 // labs just gives lab/radiology staff a counter-side payment action.

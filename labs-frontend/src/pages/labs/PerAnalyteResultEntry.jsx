@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
-import { resultApi, labServiceApi, referenceRangeApi } from "@/api/labsClient";
+import { resultApi, labServiceApi, referenceRangeApi, equipmentApi } from "@/api/labsClient";
 import { Alert, Button } from "@/components/ui";
 import { FLAG_META } from "@/utils/resultFlags";
+
+/** "GE Venue Fit Ultrasound (AST-0231)" — falls back gracefully if code is missing. */
+function equipmentLabel(asset) {
+    if (!asset) return null;
+    return asset.assetCode ? `${asset.assetName} (${asset.assetCode})` : asset.assetName;
+}
 
 /**
  * Resolve which catalogue panel the per-analyte UI should expand for this order.
@@ -147,6 +153,8 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     const [draftValues, setDraftValues] = useState({}); // testCode -> string
     const [adHoc, setAdHoc] = useState([]); // [{tempId, testCode, analyteName, value}]
     const [saving, setSaving] = useState(false);
+    const [equipment, setEquipment] = useState([]);
+    const [selectedAssetId, setSelectedAssetId] = useState("");
 
     const load = async () => {
         if (!order?.id) return;
@@ -165,6 +173,13 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order?.id]);
+
+    // Equipment picker — fetched once; asset-manager resolves hospitalId from
+    // the JWT itself. Failure is silent (proxy 502 if asset-manager is down)
+    // since the picker is optional, not blocking result entry.
+    useEffect(() => {
+        equipmentApi.list().then(setEquipment).catch(() => setEquipment([]));
+    }, []);
 
     useEffect(() => {
         if (!user?.hospitalId) return;
@@ -213,6 +228,9 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
     const missingFromPanel = panelChildren.filter((p) => !existingByCode.has(p.testCode));
 
     const saveDrafts = async () => {
+        const selectedAsset = equipment.find((e) => e.assetId === selectedAssetId);
+        const instrumentId = equipmentLabel(selectedAsset) || undefined;
+
         const fromPanel = missingFromPanel
             .filter((p) => draftValues[p.testCode] !== undefined && draftValues[p.testCode] !== "")
             .map((p) => ({
@@ -221,6 +239,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                 valueNumeric: Number(draftValues[p.testCode]),
                 unit: p.defaultUnit,
                 method: p.defaultMethod,
+                instrumentId,
             }));
         const fromAdHoc = adHoc
             .filter((a) => a.testCode && a.value !== "")
@@ -229,6 +248,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                 analyteName: a.analyteName || a.testCode,
                 valueNumeric: isNaN(Number(a.value)) ? null : Number(a.value),
                 valueText: isNaN(Number(a.value)) ? a.value : null,
+                instrumentId,
             }));
         const payload = [...fromPanel, ...fromAdHoc];
         if (!payload.length) {
@@ -290,6 +310,25 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                     Lab Services catalogue. Either add analytes manually below, or curate
                     the catalogue from <strong>Settings → Lab Services</strong>.
                 </Alert>
+            )}
+
+            {equipment.length > 0 && (
+                <label className="flex items-center gap-2 text-12 text-gray-600">
+                    Equipment used
+                    <select
+                        value={selectedAssetId}
+                        onChange={(e) => setSelectedAssetId(e.target.value)}
+                        className="hms-analyte-input w-auto min-w-[220px]"
+                    >
+                        <option value="">— not specified —</option>
+                        {equipment.map((a) => (
+                            <option key={a.assetId} value={a.assetId}>
+                                {equipmentLabel(a)}
+                            </option>
+                        ))}
+                    </select>
+                    <span className="text-11 text-gray-400">Applies to values saved below</span>
+                </label>
             )}
 
             <div className="overflow-x-auto">
@@ -463,6 +502,7 @@ function ResultRow({ r }) {
             <td className="py-2 pr-2">
                 <div className="font-bold text-gray-900">{r.analyteName}</div>
                 {r.loincCode && <div className="text-11 text-gray-400">LOINC {r.loincCode}</div>}
+                {r.instrumentId && <div className="text-11 text-gray-400">{r.instrumentId}</div>}
             </td>
             <td className="py-2 pr-2 font-mono text-gray-900">
                 {r.valueNumeric ?? r.valueText ?? "—"}
