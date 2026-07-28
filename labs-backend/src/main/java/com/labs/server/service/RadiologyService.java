@@ -80,17 +80,27 @@ public class RadiologyService {
         return orderRepository.countByHospitalIdAndStatusIn(hospitalId, COMPLETED_STATUSES);
     }
 
-    public List<RadiologyOrderDTO> getByPatient(Integer patientId) {
-        return toDTOs(orderRepository.findByPatientIdOrderByCreatedAtDesc(patientId));
+    public List<RadiologyOrderDTO> getByPatient(Integer patientId, UUID hospitalId) {
+        return toDTOs(orderRepository.findByPatientIdAndHospitalIdOrderByCreatedAtDesc(patientId, hospitalId));
     }
 
-    public List<RadiologyOrderDTO> getByAdmission(UUID admissionId) {
-        return toDTOs(orderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId));
+    public List<RadiologyOrderDTO> getByAdmission(UUID admissionId, UUID hospitalId) {
+        return toDTOs(orderRepository.findByAdmissionIdAndHospitalIdOrderByCreatedAtDesc(admissionId, hospitalId));
     }
 
-    public RadiologyOrderDTO getOrder(Long id) {
-        return toDTO(orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Radiology order not found")));
+    public RadiologyOrderDTO getOrder(Long id, UUID hospitalId) {
+        return toDTO(requireOrder(id, hospitalId));
+    }
+
+    /**
+     * Single gate for every by-id read and mutation. hospitalId comes from the
+     * caller's validated JWT, never a request param, so an id belonging to
+     * another tenant resolves to "not found" rather than leaking or mutating
+     * that tenant's order.
+     */
+    private RadiologyOrder requireOrder(Long id, UUID hospitalId) {
+        return orderRepository.findByIdAndHospitalId(id, hospitalId)
+                .orElseThrow(() -> new RuntimeException("Radiology order not found"));
     }
 
     public long countByStatus(UUID hospitalId, String status) {
@@ -178,9 +188,8 @@ public class RadiologyService {
     }
 
     @Transactional
-    public RadiologyOrderDTO markScanned(Long id) {
-        RadiologyOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public RadiologyOrderDTO markScanned(Long id, UUID hospitalId) {
+        RadiologyOrder order = requireOrder(id, hospitalId);
         // Phase 7 — accept PENDING_SCAN (legacy direct-mark flow) or
         // IN_PROGRESS (new lifecycle, tech started the modality run first).
         if (order.getStatus() != RadiologyStatus.PENDING_SCAN
@@ -210,9 +219,8 @@ public class RadiologyService {
      * PENDING_SCAN → IN_PROGRESS, stamps started_at + actor.
      */
     @Transactional
-    public RadiologyOrderDTO markStarted(Long id) {
-        RadiologyOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public RadiologyOrderDTO markStarted(Long id, UUID hospitalId) {
+        RadiologyOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != RadiologyStatus.PENDING_SCAN) {
             throw new RuntimeException("Order is not in PENDING_SCAN state — current: " + order.getStatus());
         }
@@ -240,9 +248,8 @@ public class RadiologyService {
      * per-analyte rows). Auto-bills via the same seam as generateReport.
      */
     @Transactional
-    public RadiologyOrderDTO markCompleted(Long id) {
-        RadiologyOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public RadiologyOrderDTO markCompleted(Long id, UUID hospitalId) {
+        RadiologyOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != RadiologyStatus.AWAITING_REPORT
                 && order.getStatus() != RadiologyStatus.IN_PROGRESS) {
             throw new RuntimeException(
@@ -283,9 +290,8 @@ public class RadiologyService {
 
     /** Phase 9 — soft cancel. Same semantics as LabService.cancelOrder. */
     @Transactional
-    public RadiologyOrderDTO cancelOrder(Long id, String reason) {
-        RadiologyOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public RadiologyOrderDTO cancelOrder(Long id, String reason, UUID hospitalId) {
+        RadiologyOrder order = requireOrder(id, hospitalId);
         RadiologyStatus cur = order.getStatus();
         if (cur != RadiologyStatus.PENDING_SCAN
                 && cur != RadiologyStatus.AWAITING_REPORT
@@ -313,9 +319,8 @@ public class RadiologyService {
     }
 
     @Transactional
-    public RadiologyOrderDTO generateReport(Long id, RadiologyReportRequest req) {
-        RadiologyOrder order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public RadiologyOrderDTO generateReport(Long id, RadiologyReportRequest req, UUID hospitalId) {
+        RadiologyOrder order = requireOrder(id, hospitalId);
         if (order.getStatus() != RadiologyStatus.AWAITING_REPORT) {
             throw new RuntimeException("Order is not in AWAITING_REPORT state — current: " + order.getStatus());
         }
