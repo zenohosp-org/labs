@@ -73,6 +73,14 @@ function Sidebar({ isOpen }) {
     const [packagesOpen, setPackagesOpen] = useState(() => packagesActive);
     const [settingsOpen, setSettingsOpen] = useState(() => settingsActive);
 
+    // Frosted tile behind every top-level icon. Sub-items are text-only, so the
+    // glass reads as "this is a section head" rather than pure decoration.
+    const glassIcon = (Icon) => (
+        <span className="hms-sidebar__icon-glass">
+            <Icon className="hms-sidebar__link-icon" />
+        </span>
+    );
+
     const renderLink = (link, indent = false) => {
         const Icon = link.icon;
         const baseCls = `hms-sidebar__link${indent ? " is-indent" : ""}${
@@ -86,7 +94,7 @@ function Sidebar({ isOpen }) {
                 data-tour={link.tour}
                 className={({ isActive }) => `${baseCls}${isActive ? " is-active" : ""}`}
             >
-                {!indent && <Icon className="hms-sidebar__link-icon" />}
+                {!indent && glassIcon(Icon)}
                 <span className="hms-sidebar__link-label">{link.label}</span>
             </NavLink>
         ) : (
@@ -98,7 +106,7 @@ function Sidebar({ isOpen }) {
                 data-tour={link.tour}
                 className={({ isActive }) => `${baseCls}${isActive ? " is-active" : ""}`}
             >
-                <Icon className="hms-sidebar__link-icon" />
+                {glassIcon(Icon)}
             </NavLink>
         );
     };
@@ -118,24 +126,37 @@ function Sidebar({ isOpen }) {
         );
     };
 
+    /**
+     * The panel stays mounted so its height can animate — collapsing is a
+     * grid-template-rows 1fr→0fr transition rather than an unmount, which is
+     * what lets the spring curve overshoot and settle. `visibility` on the body
+     * (CSS) pulls the hidden links out of the tab order and the a11y tree, so
+     * keeping them mounted costs nothing behaviourally.
+     */
     const renderAccordionSection = (links, label, AccIcon, open, setOpen, active, id) => {
         if (!isOpen) return links.map((link) => renderLink(link));
+        const panelId = `${(id || label).toLowerCase().replace(/\s+/g, "-")}-panel`;
         return (
-            <div>
+            <div className={`hms-sidebar__acc${open ? " is-open" : ""}`}>
                 <button
                     id={id}
+                    type="button"
                     onClick={() => setOpen((o) => !o)}
+                    aria-expanded={open}
+                    aria-controls={panelId}
                     className={`hms-sidebar__acc-btn${active ? " is-active" : ""}`}
                 >
-                    <AccIcon className="hms-sidebar__link-icon" />
+                    {glassIcon(AccIcon)}
                     <span className="hms-sidebar__link-label">{label}</span>
                     <ChevronDown size={15} className={`hms-sidebar__acc-chevron${open ? " is-open" : ""}`} />
                 </button>
-                {open && (
+                <div className="hms-sidebar__acc-panel" id={panelId}>
                     <div className="hms-sidebar__acc-body">
-                        {links.map((link) => renderLink(link, true))}
+                        <div className="hms-sidebar__acc-inner">
+                            {links.map((link) => renderLink(link, true))}
+                        </div>
                     </div>
-                )}
+                </div>
             </div>
         );
     };

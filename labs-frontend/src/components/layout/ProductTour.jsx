@@ -3,13 +3,18 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
 export const startProductTour = () => {
-    // Force open the Pathology accordion so Collection / Lab Queue / Reports are visible
+    // Force open the Pathology accordion so Collection / Lab Queue / Reports are visible.
+    // Read aria-expanded rather than probing for the child links: the accordion
+    // keeps its panel mounted (hidden via visibility) so the height can animate,
+    // so the links are in the DOM whether the group is open or not.
     const pathologyBtn = document.getElementById('tour-pathology-accordion');
-    if (pathologyBtn && !document.querySelector('[data-tour="collection"]')) {
+    if (pathologyBtn && pathologyBtn.getAttribute('aria-expanded') !== 'true') {
         pathologyBtn.click();
     }
 
-    // Wait for the accordion to open and elements to render
+    // Wait out the accordion's spring (420ms) plus the child stagger before
+    // driver.js measures anything — highlighting mid-animation lands the
+    // spotlight in the wrong place.
     setTimeout(() => {
         const steps = [
             {
@@ -69,7 +74,7 @@ export const startProductTour = () => {
         });
 
         driverObj.drive();
-    }, 300);
+    }, 650);
 };
 
 export default function ProductTour() {
