@@ -28,11 +28,7 @@ public interface LabOrderRepository extends JpaRepository<LabOrder, Long> {
     List<LabOrder> findByHospitalIdAndStatusInOrderByCreatedAtDesc(
             UUID hospitalId, Collection<LabStatus> statuses);
 
-    List<LabOrder> findByPatientIdOrderByCreatedAtDesc(Integer patientId);
-
     long countByHospitalIdAndStatus(UUID hospitalId, LabStatus status);
 
     long countByHospitalIdAndStatusIn(UUID hospitalId, Collection<LabStatus> statuses);
-
-    List<LabOrder> findByAdmissionIdOrderByCreatedAtDesc(UUID admissionId);
 }

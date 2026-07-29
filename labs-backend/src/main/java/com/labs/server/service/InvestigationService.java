@@ -39,15 +39,27 @@ public class InvestigationService {
     private final RadiologyOrderRepository radiologyOrderRepository;
     private final InvoiceRepository invoiceRepository;
 
-    public List<InvestigationSummaryDTO> getByAdmission(UUID admissionId) {
-        List<LabOrder> labs = labOrderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId);
-        List<RadiologyOrder> rads = radiologyOrderRepository.findByAdmissionIdOrderByCreatedAtDesc(admissionId);
+    /**
+     * hospitalId comes from the caller's validated JWT, never a request param.
+     * Admission and patient ids are supplied by the client and are enumerable,
+     * so both source queries are tenant-scoped: a foreign admission/patient
+     * yields an empty list rather than another hospital's clinical history.
+     * The invoice lookups below are keyed off the order ids returned here, so
+     * they inherit that scope and need no separate guard.
+     */
+    public List<InvestigationSummaryDTO> getByAdmission(UUID admissionId, UUID hospitalId) {
+        List<LabOrder> labs =
+                labOrderRepository.findByAdmissionIdAndHospitalIdOrderByCreatedAtDesc(admissionId, hospitalId);
+        List<RadiologyOrder> rads =
+                radiologyOrderRepository.findByAdmissionIdAndHospitalIdOrderByCreatedAtDesc(admissionId, hospitalId);
         return merge(labs, rads);
     }
 
-    public List<InvestigationSummaryDTO> getByPatient(Integer patientId) {
-        List<LabOrder> labs = labOrderRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
-        List<RadiologyOrder> rads = radiologyOrderRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
+    public List<InvestigationSummaryDTO> getByPatient(Integer patientId, UUID hospitalId) {
+        List<LabOrder> labs =
+                labOrderRepository.findByPatientIdAndHospitalIdOrderByCreatedAtDesc(patientId, hospitalId);
+        List<RadiologyOrder> rads =
+                radiologyOrderRepository.findByPatientIdAndHospitalIdOrderByCreatedAtDesc(patientId, hospitalId);
         return merge(labs, rads);
     }
 

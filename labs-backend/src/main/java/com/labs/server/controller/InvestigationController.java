@@ -38,13 +38,15 @@ public class InvestigationController {
     private final JwtUtil jwtUtil;
 
     @GetMapping("/admission/{admissionId}")
-    public ResponseEntity<List<InvestigationSummaryDTO>> getByAdmission(@PathVariable UUID admissionId) {
-        return ResponseEntity.ok(service.getByAdmission(admissionId));
+    public ResponseEntity<List<InvestigationSummaryDTO>> getByAdmission(
+            @PathVariable UUID admissionId, Authentication auth) {
+        return ResponseEntity.ok(service.getByAdmission(admissionId, resolveHospitalId(auth)));
     }
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<InvestigationSummaryDTO>> getByPatient(@PathVariable Integer patientId) {
-        return ResponseEntity.ok(service.getByPatient(patientId));
+    public ResponseEntity<List<InvestigationSummaryDTO>> getByPatient(
+            @PathVariable Integer patientId, Authentication auth) {
+        return ResponseEntity.ok(service.getByPatient(patientId, resolveHospitalId(auth)));
     }
 
     /**
@@ -65,6 +67,22 @@ public class InvestigationController {
         return ResponseEntity
                 .status(out.isIdempotent() ? HttpStatus.OK : HttpStatus.CREATED)
                 .body(out);
+    }
+
+    /**
+     * Tenant scope for every request, taken from the validated JWT rather than
+     * a client-supplied param. Fails closed: no token or no hospital claim
+     * means no request, instead of falling back to an unscoped query.
+     */
+    private UUID resolveHospitalId(Authentication auth) {
+        if (auth == null || auth.getCredentials() == null) {
+            throw new RuntimeException("Unauthenticated");
+        }
+        UUID hospitalId = jwtUtil.getHospitalId((String) auth.getCredentials());
+        if (hospitalId == null) {
+            throw new RuntimeException("Token carries no hospital scope");
+        }
+        return hospitalId;
     }
 
     private String resolveActorName(Authentication auth) {
