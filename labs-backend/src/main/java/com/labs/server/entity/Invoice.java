@@ -41,6 +41,15 @@ public class Invoice {
     @JsonIgnore
     private Patient patient;
 
+    /**
+     * Denormalised copy of the patient's name at invoice-creation time
+     * (NOT NULL in the shared table — HMS's own invoice-creation paths
+     * always set it). Must be populated on every new Invoice this entity
+     * creates or the INSERT fails at the DB level.
+     */
+    @Column(name = "patient_name_snapshot", nullable = false)
+    private String patientNameSnapshot;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admission_id")
     @JsonIgnore

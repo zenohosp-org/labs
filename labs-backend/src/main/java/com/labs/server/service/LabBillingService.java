@@ -112,6 +112,7 @@ public class LabBillingService {
                     .invoiceNumber(invoiceNum)
                     .hospital(order.getHospital())
                     .patient(order.getPatient())
+                    .patientNameSnapshot(patientFullName(order))
                     .subtotal(order.getPrice())
                     .tax(lineGst)
                     .discount(BigDecimal.ZERO)
@@ -133,6 +134,15 @@ public class LabBillingService {
 
         order.setStatus(LabStatus.BILLED);
         labOrderRepository.save(order);
+    }
+
+    private static String patientFullName(LabOrder order) {
+        var p = order.getPatient();
+        if (p == null) return "Unknown Patient";
+        String first = p.getFirstName();
+        String last = p.getLastName();
+        String full = ((first != null ? first : "") + (last != null ? " " + last : "")).trim();
+        return full.isEmpty() ? "Unknown Patient" : full;
     }
 
     /**
