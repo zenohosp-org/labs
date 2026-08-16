@@ -46,6 +46,12 @@ export default function ReportActionsModal({ order, onClose }) {
     const load = async () => {
         if (!order?.id) return;
         setLoading(true);
+        // Reset before the fetch, not just on success — this modal instance can
+        // be reused across orders (parent swaps `order` without remounting), so
+        // a stale "latest" from the PREVIOUS order must never survive a failed
+        // fetch for the new one. Otherwise the Download button stays clickable
+        // and points at a report.pdf that doesn't exist for this order (500).
+        setVersions([]);
         try {
             const v = await reportPdfApi.versions(order.id);
             setVersions(v ?? []);

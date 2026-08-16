@@ -133,12 +133,14 @@ public class ReportPdfService {
 
     /**
      * Render the latest signed ReportPdf for an order to PDF bytes. If no
-     * row exists yet, this is a no-op error — caller should sign first.
+     * row exists yet, that's an expected client-state error (order hasn't
+     * been through /sign), not a server fault — 404, not 500.
      */
     @Transactional(readOnly = true)
     public byte[] render(Long labOrderId) {
         ReportPdf head = pdfRepository.findFirstByLabOrderIdOrderByVersionDesc(labOrderId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND,
                         "No signed report for order " + labOrderId + " — call /sign first"));
         return renderPdf(head);
     }
