@@ -23,7 +23,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -510,6 +512,8 @@ public class LabService {
                 .patientId(o.getPatient().getId())
                 .patientName(patientName)
                 .patientUhid(o.getPatient().getUhid())
+                .patientSex(normaliseSex(o.getPatient().getGender()))
+                .patientAgeYears(ageYears(o.getPatient().getDob()))
                 .admissionId(o.getAdmission() != null ? o.getAdmission().getId() : null)
                 .admissionNumber(o.getAdmission() != null ? o.getAdmission().getAdmissionNumber() : null)
                 .serviceName(o.getServiceName())
@@ -552,5 +556,29 @@ public class LabService {
                 .createdByName(o.getCreatedByName())
                 .createdAt(o.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * HMS's patients.gender is free text (seen in the wild: "Male", "Female",
+     * "Other", "U", "UNKNOWN"). lab_reference_ranges.sex only knows MALE |
+     * FEMALE | ANY, so anything that isn't clearly male/female normalises to
+     * null — the frontend then matches sex=ANY bands only, rather than
+     * guessing.
+     */
+    private String normaliseSex(String gender) {
+        if (gender == null) return null;
+        String g = gender.trim().toUpperCase();
+        if (g.equals("MALE") || g.equals("M")) return "MALE";
+        if (g.equals("FEMALE") || g.equals("F")) return "FEMALE";
+        return null;
+    }
+
+    private Integer ageYears(LocalDate dob) {
+        if (dob == null) return null;
+        try {
+            return Period.between(dob, LocalDate.now()).getYears();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

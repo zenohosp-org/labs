@@ -50,8 +50,13 @@ function LabWriteReportModal({ order, onClose, onSaved }) {
     const [saving, setSaving] = useState(false);
 
     const [matchTest, setMatchTest] = useState(order?.serviceName ?? "");
-    const [matchSex, setMatchSex] = useState("ANY");
-    const [matchAge, setMatchAge] = useState("");
+    // Pre-filled from the order's patient record (HMS-owned sex/DOB, joined
+    // server-side into LabOrderDTO) so the tech isn't re-typing what's
+    // already on file — still editable for the rare manual override.
+    const [matchSex, setMatchSex] = useState(order?.patientSex ?? "ANY");
+    const [matchAge, setMatchAge] = useState(
+        order?.patientAgeYears != null ? String(order.patientAgeYears) : ""
+    );
     const [matchValue, setMatchValue] = useState("");
     const [matchResult, setMatchResult] = useState(null);
     const [matching, setMatching] = useState(false);

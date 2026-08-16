@@ -17,6 +17,10 @@ public class LabOrderDTO {
     private Integer patientId;
     private String patientName;
     private String patientUhid;
+    /** MALE | FEMALE | null (unrecorded / not Male-or-Female in HMS) — normalised from patients.gender. */
+    private String patientSex;
+    /** From patients.dob; null if dob unrecorded. Drives reference-range age-band matching. */
+    private Integer patientAgeYears;
     private UUID admissionId;
     private String admissionNumber;
     private String serviceName;

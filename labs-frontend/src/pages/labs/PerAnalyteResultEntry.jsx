@@ -58,36 +58,52 @@ function findPanel(catalog, order) {
 
 /**
  * Build a Map<labServiceId, range> picking the best matching reference range
- * for each analyte. Today we don't carry patient sex / age on the order DTO,
- * so we default to the "adult-broad" band:
- *   1. prefer sex=ANY rows
- *   2. otherwise prefer the row that covers the typical adult window
- *      (minAge ≤ 18 and maxAge ≥ 50)
- *   3. fall back to the widest age window
+ * for each analyte, using the ORDER's real patient sex / age (LabOrderDTO
+ * patientSex/patientAgeYears — sourced from the shared HMS patients table,
+ * not re-typed by the tech):
+ *   1. A sex-specific band that doesn't match the patient's sex is
+ *      disqualified outright (a MALE band must never apply to a female
+ *      patient), not just deprioritised.
+ *   2. Among what's left: exact sex match beats sex=ANY; narrower age
+ *      window (that still contains the patient's age) wins.
  *
- * Deterministic tiebreaker: lower minAgeYears wins. When a future migration
- * adds patient demographics to LabOrderDTO this becomes a real lookup; for
- * now this gives the most useful default for the typical adult lab order.
+ * When patientSex/patientAgeYears is unknown (unrecorded in HMS, or a
+ * gender value outside Male/Female), falls back to the old "typical adult,
+ * prefer sex=ANY" heuristic so an analyte is never left with zero band.
+ * Deterministic tiebreaker: lower minAgeYears wins.
  */
-function indexRangesByService(ranges) {
+function indexRangesByService(ranges, patientSex, patientAgeYears) {
     const groups = new Map();
     for (const r of ranges || []) {
         if (!r.isActive || r.labServiceId == null) continue;
         if (!groups.has(r.labServiceId)) groups.set(r.labServiceId, []);
         groups.get(r.labServiceId).push(r);
     }
+
+    const sexDisqualified = (r) =>
+        !!patientSex && !!r.sex && r.sex !== "ANY" && r.sex !== patientSex;
+    const ageDisqualified = (r) =>
+        patientAgeYears != null
+        && ((r.minAgeYears != null && patientAgeYears < r.minAgeYears)
+            || (r.maxAgeYears != null && patientAgeYears > r.maxAgeYears));
+
     const score = (r) => {
-        const isAny = r.sex === "ANY" || r.sex == null;
+        if (sexDisqualified(r) || ageDisqualified(r)) return -1;
+        const sexScore = r.sex === patientSex ? 2000 : (r.sex === "ANY" || r.sex == null) ? 1000 : 0;
+        const ageWidth = (r.maxAgeYears ?? 200) - (r.minAgeYears ?? 0);
+        if (patientAgeYears != null) return sexScore + (200 - Math.min(ageWidth, 200));
         const coversAdult =
             (r.minAgeYears == null || r.minAgeYears <= 18)
             && (r.maxAgeYears == null || r.maxAgeYears >= 50);
-        const ageWidth = (r.maxAgeYears ?? 200) - (r.minAgeYears ?? 0);
-        return (isAny ? 1000 : 0) + (coversAdult ? 100 : 0) + Math.min(ageWidth, 200);
+        return sexScore + (coversAdult ? 100 : 0) + Math.min(ageWidth, 200);
     };
+
     const out = new Map();
     for (const [svcId, list] of groups) {
-        list.sort((a, b) => score(b) - score(a) || (a.minAgeYears ?? 0) - (b.minAgeYears ?? 0));
-        out.set(svcId, list[0]);
+        const qualified = list.filter((r) => score(r) >= 0);
+        const pool = qualified.length ? qualified : list; // never leave an analyte with zero reference band
+        pool.sort((a, b) => score(b) - score(a) || (a.minAgeYears ?? 0) - (b.minAgeYears ?? 0));
+        out.set(svcId, pool[0]);
     }
     return out;
 }
@@ -193,7 +209,7 @@ export default function PerAnalyteResultEntry({ order, onAfterChange }) {
                     referenceRangeApi.list(user.hospitalId).catch(() => []),
                 ]);
                 setCatalog(c ?? []);
-                setRangesByService(indexRangesByService(ranges));
+                setRangesByService(indexRangesByService(ranges, order?.patientSex, order?.patientAgeYears));
                 const panel = findPanel(c ?? [], order);
                 if (panel) {
                     try {
