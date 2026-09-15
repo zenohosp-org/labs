@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import { specimenApi, rejectionReasonApi } from "@/api/labsClient";
+import { sanitizeName } from "@/utils/validators";
 import {
     Alert,
     Badge,
@@ -330,7 +331,7 @@ export default function SpecimensModal({ order, onClose, onChanged }) {
                     <Input
                         value={add.collectedByName}
                         onChange={(e) =>
-                            setAdd((a) => ({ ...a, collectedByName: e.target.value }))
+                            setAdd((a) => ({ ...a, collectedByName: sanitizeName(e.target.value) }))
                         }
                         placeholder="Phlebotomist name"
                     />

@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { reportTemplateApi } from "@/api/labsClient";
+import { sanitizeName } from "@/utils/validators";
 import {
     Alert,
     Badge,
@@ -390,7 +391,7 @@ export default function ReportTemplates() {
                             <FormGroup label="Signatory name">
                                 <Input
                                     value={editor.form.signatoryName}
-                                    onChange={(e) => set("signatoryName", e.target.value)}
+                                    onChange={(e) => set("signatoryName", sanitizeName(e.target.value))}
                                     placeholder="Dr. Vasantha Kumari"
                                 />
                             </FormGroup>

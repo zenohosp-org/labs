@@ -10,6 +10,7 @@ import {
     admissionApi,
 } from "@/api/labsClient";
 import { fmtId } from "@/utils/idFormat";
+import { sanitizeName, sanitizePhone, validatePhone } from "@/utils/validators";
 import { X, Search, Loader2, UserPlus, ChevronLeft, CheckCircle2, BedDouble } from "lucide-react";
 
 const PRIORITIES = ["ROUTINE", "URGENT", "STAT"];
@@ -112,6 +113,11 @@ export default function NewOrderModal({ onClose, onCreated }) {
             notify("First name is required", "error");
             return;
         }
+        const phoneError = validatePhone(quickForm.phone.trim());
+        if (phoneError) {
+            notify(phoneError, "error");
+            return;
+        }
         setRegistering(true);
         try {
             const created = await patientApi.create({
@@ -210,19 +216,19 @@ export default function NewOrderModal({ onClose, onCreated }) {
                                 <label className="hms-rad-label">First Name *</label>
                                 <input required type="text" className="hms-rad-input" placeholder="e.g. Ravi"
                                     value={quickForm.firstName}
-                                    onChange={(e) => setQ("firstName", e.target.value)} />
+                                    onChange={(e) => setQ("firstName", sanitizeName(e.target.value))} />
                             </div>
                             <div>
                                 <label className="hms-rad-label">Last Name</label>
                                 <input type="text" className="hms-rad-input" placeholder="e.g. Kumar"
                                     value={quickForm.lastName}
-                                    onChange={(e) => setQ("lastName", e.target.value)} />
+                                    onChange={(e) => setQ("lastName", sanitizeName(e.target.value))} />
                             </div>
                             <div>
                                 <label className="hms-rad-label">Phone</label>
-                                <input type="text" className="hms-rad-input" placeholder="+91 98765 43210"
+                                <input type="tel" className="hms-rad-input" placeholder="+91 98765 43210"
                                     value={quickForm.phone}
-                                    onChange={(e) => setQ("phone", e.target.value)} />
+                                    onChange={(e) => setQ("phone", sanitizePhone(e.target.value))} />
                             </div>
                             <div>
                                 <label className="hms-rad-label">Gender</label>
@@ -350,7 +356,7 @@ export default function NewOrderModal({ onClose, onCreated }) {
                                             <button type="button"
                                                 onClick={() => {
                                                     setPatients([]);
-                                                    const parts = patientSearch.trim().split(" ");
+                                                    const parts = sanitizeName(patientSearch.trim()).split(" ").filter(Boolean);
                                                     setQuickForm((f) => ({
                                                         ...f,
                                                         firstName: parts[0] ?? "",
