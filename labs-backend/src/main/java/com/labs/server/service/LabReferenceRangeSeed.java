@@ -50,14 +50,14 @@ public class LabReferenceRangeSeed {
         d("Platelet Count",  "HAEMATOLOGY", "ANY",      0, 200, "150000", "450000", "/µL", "1.5 – 4.5 lakh /µL"),
         d("RBC Count",       "HAEMATOLOGY", "MALE",    18, 200, "4.7", "6.1",  "M/µL",  "4.7 – 6.1 M/µL"),
         d("RBC Count",       "HAEMATOLOGY", "FEMALE",  18, 200, "4.2", "5.4",  "M/µL",  "4.2 – 5.4 M/µL"),
-        d("PCV / Hematocrit","HAEMATOLOGY", "MALE",    18, 200, "40",   "50",   "%",     "40 – 50 %"),
-        d("PCV / Hematocrit","HAEMATOLOGY", "FEMALE",  18, 200, "36",   "46",   "%",     "36 – 46 %"),
+        d("Hematocrit",      "HAEMATOLOGY", "MALE",    18, 200, "40",   "50",   "%",     "40 – 50 %"),
+        d("Hematocrit",      "HAEMATOLOGY", "FEMALE",  18, 200, "36",   "46",   "%",     "36 – 46 %"),
         d("ESR",             "HAEMATOLOGY", "MALE",     0, 200, "0",    "15",   "mm/hr", "0 – 15 mm/hr"),
         d("ESR",             "HAEMATOLOGY", "FEMALE",   0, 200, "0",    "20",   "mm/hr", "0 – 20 mm/hr"),
 
         // ── Biochemistry — sugar / diabetes ──────────────────────────
         d("Fasting Blood Sugar", "BIOCHEMISTRY", "ANY", 0, 200, "70",  "100", "mg/dL", "70 – 100 mg/dL"),
-        d("Post-Prandial Blood Sugar", "BIOCHEMISTRY", "ANY", 0, 200, "70", "140", "mg/dL", "70 – 140 mg/dL"),
+        d("Post-Prandial Glucose", "BIOCHEMISTRY", "ANY", 0, 200, "70", "140", "mg/dL", "70 – 140 mg/dL"),
         d("Random Blood Sugar",  "BIOCHEMISTRY", "ANY", 0, 200, "70",  "140", "mg/dL", "70 – 140 mg/dL"),
         d("HbA1c",               "BIOCHEMISTRY", "ANY", 0, 200, "4.0", "5.7", "%",     "4.0 – 5.7 %"),
 
@@ -69,11 +69,14 @@ public class LabReferenceRangeSeed {
         d("Uric Acid",       "BIOCHEMISTRY", "FEMALE",  0, 200, "2.4", "6.0", "mg/dL", "2.4 – 6.0 mg/dL"),
 
         // ── Liver function ────────────────────────────────────────────
-        d("Bilirubin Total", "BIOCHEMISTRY", "ANY", 0, 200, "0.1", "1.2",  "mg/dL", "0.1 – 1.2 mg/dL"),
-        d("Bilirubin Direct","BIOCHEMISTRY", "ANY", 0, 200, "0.0", "0.3",  "mg/dL", "0.0 – 0.3 mg/dL"),
+        d("Total Bilirubin", "BIOCHEMISTRY", "ANY", 0, 200, "0.1", "1.2",  "mg/dL", "0.1 – 1.2 mg/dL"),
+        d("Direct Bilirubin","BIOCHEMISTRY", "ANY", 0, 200, "0.0", "0.3",  "mg/dL", "0.0 – 0.3 mg/dL"),
         d("SGPT (ALT)",      "BIOCHEMISTRY", "ANY", 0, 200, "5",   "40",   "U/L",   "5 – 40 U/L"),
         d("SGOT (AST)",      "BIOCHEMISTRY", "ANY", 0, 200, "5",   "40",   "U/L",   "5 – 40 U/L"),
         d("Alkaline Phosphatase", "BIOCHEMISTRY", "ANY", 18, 200, "40", "129", "U/L", "40 – 129 U/L"),
+        d("Gamma-GT",         "BIOCHEMISTRY", "ANY", 0, 200, "0",   "55",   "U/L",  "0 – 55 U/L"),
+        d("Total Protein",    "BIOCHEMISTRY", "ANY", 0, 200, "6.0", "8.3",  "g/dL", "6.0 – 8.3 g/dL"),
+        d("Albumin",          "BIOCHEMISTRY", "ANY", 0, 200, "3.5", "5.0",  "g/dL", "3.5 – 5.0 g/dL"),
 
         // ── Lipid profile ────────────────────────────────────────────
         d("Total Cholesterol", "BIOCHEMISTRY", "ANY", 0, 200, null,  "200", "mg/dL", "< 200 mg/dL"),
@@ -81,9 +84,12 @@ public class LabReferenceRangeSeed {
         d("HDL Cholesterol",   "BIOCHEMISTRY", "MALE",   0, 200, "40", null, "mg/dL", "> 40 mg/dL"),
         d("HDL Cholesterol",   "BIOCHEMISTRY", "FEMALE", 0, 200, "50", null, "mg/dL", "> 50 mg/dL"),
         d("Triglycerides",     "BIOCHEMISTRY", "ANY", 0, 200, null,  "150", "mg/dL", "< 150 mg/dL"),
+        d("VLDL Cholesterol",  "BIOCHEMISTRY", "ANY", 0, 200, "2",   "30",  "mg/dL", "2 – 30 mg/dL"),
 
         // ── Thyroid ──────────────────────────────────────────────────
         d("TSH",  "ENDOCRINOLOGY", "ANY", 18, 200, "0.4", "4.5", "µIU/mL", "0.4 – 4.5 µIU/mL"),
+        d("Total T3", "ENDOCRINOLOGY", "ANY", 18, 200, "80",  "200",  "ng/dL", "80 – 200 ng/dL"),
+        d("Total T4", "ENDOCRINOLOGY", "ANY", 18, 200, "5.0", "12.0", "µg/dL", "5.0 – 12.0 µg/dL"),
         d("Free T3", "ENDOCRINOLOGY", "ANY", 18, 200, "2.0", "4.4", "pg/mL", "2.0 – 4.4 pg/mL"),
         d("Free T4", "ENDOCRINOLOGY", "ANY", 18, 200, "0.8", "1.8", "ng/dL", "0.8 – 1.8 ng/dL"),
 

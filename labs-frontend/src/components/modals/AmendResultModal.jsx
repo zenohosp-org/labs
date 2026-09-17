@@ -64,8 +64,8 @@ export default function AmendResultModal({ result, onClose, onAmended }) {
             notify("Amendment recorded — original preserved", "success");
             onAmended?.();
             onClose();
-        } catch {
-            notify("Failed to amend", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to amend", "error");
         } finally {
             setSaving(false);
         }

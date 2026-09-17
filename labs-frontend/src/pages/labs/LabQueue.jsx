@@ -73,8 +73,8 @@ function LabQueue() {
             ]);
             setOrders(ordersData);
             setStats(statsData);
-        } catch {
-            notify("Failed to load lab queue", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load lab queue", "error");
         } finally {
             setLoading(false);
         }
@@ -90,8 +90,8 @@ function LabQueue() {
             await labApi.markCollected(order.id);
             notify("Sample collected — moved to Awaiting Report", "success");
             load();
-        } catch {
-            notify("Failed to update status", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to update status", "error");
         } finally {
             setMarkingCollected(null);
         }

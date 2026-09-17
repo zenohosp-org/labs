@@ -106,8 +106,8 @@ export default function RangeEditorModal({ isOpen, onClose, range, onSuccess }) 
             notify(range?.id ? "Band updated" : "Band added", "success");
             onSuccess?.();
             onClose();
-        } catch {
-            notify("Failed to save", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to save", "error");
         } finally {
             setSaving(false);
         }

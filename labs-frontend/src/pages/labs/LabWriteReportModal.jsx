@@ -108,8 +108,8 @@ function LabWriteReportModal({ order, onClose, onSaved }) {
             await labApi.generateReport(order.id, findings, observation);
             notify("Report generated", "success");
             onSaved();
-        } catch {
-            notify("Failed to generate report", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to generate report", "error");
         } finally {
             setSaving(false);
         }
@@ -126,8 +126,8 @@ function LabWriteReportModal({ order, onClose, onSaved }) {
             await labApi.generateReport(order.id, summary, observation || "");
             notify("Report finalised — per-analyte results preserved", "success");
             onSaved();
-        } catch {
-            notify("Failed to finalise report", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to finalise report", "error");
         } finally {
             setSaving(false);
         }

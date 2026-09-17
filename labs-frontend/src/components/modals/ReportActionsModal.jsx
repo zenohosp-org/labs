@@ -55,8 +55,8 @@ export default function ReportActionsModal({ order, onClose }) {
         try {
             const v = await reportPdfApi.versions(order.id);
             setVersions(v ?? []);
-        } catch {
-            notify("Failed to load report versions", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Failed to load report versions", "error");
         } finally {
             setLoading(false);
         }
@@ -87,8 +87,8 @@ export default function ReportActionsModal({ order, onClose }) {
             await reportPdfApi.sign(order.id, { cumulative: includeCumulative });
             notify("Report signed — new version ready to download", "success");
             await load();
-        } catch {
-            notify("Sign failed", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Sign failed", "error");
         } finally {
             setSigning(false);
         }
@@ -106,8 +106,8 @@ export default function ReportActionsModal({ order, onClose }) {
             await reportPdfApi.revoke(pdf.id, reason);
             notify("Report version revoked", "success");
             await load();
-        } catch {
-            notify("Revoke failed", "error");
+        } catch (err) {
+            notify(err?.response?.data?.message || "Revoke failed", "error");
         } finally {
             setRevoking(null);
         }
